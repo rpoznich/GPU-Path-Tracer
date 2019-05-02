@@ -1,0 +1,7 @@
+.vscode
+build
+build/
+src/CMakeFiles
+src/CMakeFiles/
+third-party
+third-party/
