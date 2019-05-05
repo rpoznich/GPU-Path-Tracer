@@ -1,7 +1,6 @@
 R"zzz(#version 430 core
 
-layout(binding = 0, rg16f) uniform image3D photonMap3D;
-layout(binding = 1, rg16f) uniform imageCubeArray photonMaps;
+layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
 
 uniform vec4 light_position;
 
@@ -24,9 +23,9 @@ struct box {
 
 
 
-#define MAX_SCENE_BOUNDS 100.0
+#define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
-#define EPSILON 0.00001
+#define EPSILON 0.000001
 float min_height = 0.0;
 float max_height = 2.0;
 float min_depth = 43;
@@ -56,8 +55,9 @@ const box boxes[] = box[21](
   box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   /* Box in the middle */
-  box(vec3(45, 1.0, 45), vec3(46, 2.0, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
+  box(vec3(45, 1.0, 46), vec3(46, 2.0, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
 );
+
 struct isect
 {
   float tMin;
@@ -148,7 +148,7 @@ bool intersectBox(vec3 origin, vec3 dir, const box b, out isect i)
         vec3 t2 = max(tMin, tMax);
         i.tMin = max(max(t1.x, t1.y), t1.z);
         i.tMax = min(min(t2.x, t2.y), t2.z);
-        if(i.tMax >= 0.0 && i.tMin < i.tMax && i.tMin > EPSILON)
+        if(i.tMax >= 0.0 && i.tMin <= i.tMax && i.tMin > EPSILON)
         {
           vec3 hit = origin + dir * i.tMin;
           if (dir.x > 0.0 && abs(hit.x - b.min.x) < EPSILON){
@@ -204,7 +204,7 @@ bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
     isect temp;
     if (intersectBox(origin, dir, boxes[i], temp) && temp.tMin < smallest) {
       intersection = temp;
-      smallest = intersection.tMin;
+      smallest = temp.tMin;
       found = true;
       intersection.ref = boxes[i].ref;
       intersection.bi = i;
@@ -251,34 +251,36 @@ void trace(vec3 origin, vec3 dir) {
   {
     isect i;
     if (intersectBoxes(origin, dir, i)) {
-		box b = boxes[i.bi];
-		vec3 hitPoint = origin + i.tMin * dir;
-		int fIndex = i.face;
-		float distance_attenuation = 1.0 / max(1.0,distance(origin,hitPoint));
-		attenuate_factor *= max(0,dot(i.normal, -dir)) * distance_attenuation;
-		vec2 uv = getUV(hitPoint, b, fIndex);
-		ivec3 index = ivec3(uv * size.xy, i.bi * 6 + fIndex);
-    ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 + i.bi * 6 + fIndex);
-		float color = attenuate_factor * 10;
-		vec2 oldColor = imageLoad(photonMaps, index).rg;
-		float numPhotons = oldColor.g;
-		float blended = oldColor.r;
-    
-    blended += color;
-    imageStore(photonMap3D, ivec3(get3DTexCoord(hitPoint)*imageSize(photonMap3D)), vec4(max(0,blended), numPhotons + 1.0, 0.0, 1.0));
-		imageStore(photonMaps, index, vec4(max(0,blended), numPhotons + 1.0, 0.0, 1.0));
-    imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, numPhotons + 1.0, 0.0, 1.0));
-		if(i.ref){
-        attenuate_factor *= 0.5;
-        origin += (i.tMin-0.0001) * dir;
-        dir = reflect(dir, i.normal);
+  		box b = boxes[i.bi];
+  		vec3 hitPoint = origin + i.tMin * dir;
+  		int fIndex = i.face;
+  		float distance_attenuation = 1.0 / max(1.0,distance(origin,hitPoint));
+  		attenuate_factor *= max(0,dot(i.normal, -dir)) * distance_attenuation;
+  		vec2 uv = getUV(hitPoint, b, fIndex);
+  		ivec3 index = ivec3(uv * size.xy, i.bi * 6 + fIndex);
+      ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 + i.bi * 6 + fIndex);
+  		float color = attenuate_factor * 12;
+  		vec2 oldColor = imageLoad(photonMaps, index).rg;
+  		float numPhotons = oldColor.g;
+  		float blended = oldColor.r;
+      if(numPhotons <= 0)
+      {
+       blended += color;
+    	 imageStore(photonMaps, index, vec4(blended, 1.0, 0.0, 1.0));
+       imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
+      }
+
+  		if(i.ref){
+          attenuate_factor *= 0.5;
+          origin += (i.tMin-0.0001) * dir;
+          dir = reflect(dir, i.normal);
+          break;
+  		} else {
+  			break;
+  		}
+  		depth--;
+      } else 
         break;
-		} else {
-			break;
-		}
-		depth--;
-    } else 
-      break;
   }
 }
 
@@ -286,7 +288,7 @@ void trace(vec3 origin, vec3 dir) {
 layout (local_size_x = 8, local_size_y = 8) in;
 void main(void) {
   vec2 invId = vec2(gl_GlobalInvocationID.xy);
-  float lightRadius = 10.0;
+  float lightRadius = 0.2;
   float rand1 = random(invId, time);
   float rand2 = random(invId + vec2(641.51224, 423.178), time);
   float rand3 = random(invId - vec2(147.16414, 363.941), time);
@@ -302,8 +304,8 @@ void main(void) {
   /* Sample random sphere point */
   vec3 randSphere = randomSpherePoint(seeds);
   vec3 positionOnLight = vec3(light_position) + randSphere * lightRadius;
-  vec3 lightDirection = normalize(randomRay(seeds, vec3(0,-1,0)))	;
-  trace(vec3(light_position), lightDirection);
+  vec3 lightDirection = normalize(randomRay(seeds, randSphere))	;
+  trace(vec3(positionOnLight), lightDirection);
  
 }
 )zzz"

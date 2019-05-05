@@ -19,9 +19,9 @@ struct box {
   vec3 ks_;
   bool ref;
 };
-#define MAX_SCENE_BOUNDS 100.0
+#define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
-#define EPSILON 0.0001
+#define EPSILON 0.000001
 
 const box boxes[] = box[21](
   /* The ground */

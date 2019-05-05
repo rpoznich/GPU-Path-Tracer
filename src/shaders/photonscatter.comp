@@ -1,8 +1,7 @@
 R"zzz(#version 430 core
 
 
-layout(binding = 0, rg16f) uniform image3D photonMap3D;
-layout(binding = 1, rg16f) uniform imageCubeArray photonMaps;
+layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
 
 uniform vec4 light_position;
 
@@ -22,9 +21,9 @@ struct box {
 
 
 
-#define MAX_SCENE_BOUNDS 100.0
+#define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
-#define EPSILON 0.00001
+#define EPSILON 0.000001
 const box boxes[] = box[21](
   /* The ground */
    box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
@@ -48,8 +47,9 @@ const box boxes[] = box[21](
   box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   /* Box in the middle */
-  box(vec3(45, 1.0, 45), vec3(46, 2.0, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
+  box(vec3(45, 1.0, 46), vec3(46, 2.0, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
 );
+
 struct isect
 {
   float tMin;
@@ -259,7 +259,7 @@ void trace(vec3 origin, vec3 dir, float atten) {
   		vec3 hitPoint = origin + i.tMin * dir;
   		int fIndex = i.face;
   		float distance_attenuation = 1.0 / max(1.0,distance(origin,hitPoint));
-  		attenuate_factor *= max(0,dot(i.normal, -dir)) * distance_attenuation;
+  		attenuate_factor *= distance_attenuation;
   		vec2 texCoord = getUV(hitPoint, b, fIndex);
   		ivec3 index = ivec3(texCoord * size.xy, i.bi * 6 + fIndex);
       ivec3 scatter_index = ivec3(texCoord * size.xy, NUM_BOXES * 6 + i.bi * 6 + fIndex);
@@ -269,8 +269,8 @@ void trace(vec3 origin, vec3 dir, float atten) {
   		float numPhotons = oldColor.g;
   		float blended = oldColor.r;
   		blended += color;
-  		imageStore(photonMaps, index, vec4(max(0,blended), numPhotons + 1.0, 0.0, 1.0));
-      imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, 1.0, 0.0, 1.0));
+  		imageStore(photonMaps, index, vec4(max(0,blended), numPhotons, 0.0, 1.0));
+      imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
   		if(i.ref){
   			origin = hitPoint;
   			dir = reflect(dir, i.normal);
@@ -332,9 +332,9 @@ layout (local_size_x = 8, local_size_y = 8) in;
 void main(void) {
   vec2 invId = vec2(gl_GlobalInvocationID.xy);
   float lightRadius = 0.2;
-  float rand1 = random(invId, time);
-  float rand2 = random(invId + vec2(641.51224, 423.178), time);
-  float rand3 = random(invId - vec2(147.16414, 363.941), time);
+  float rand1 = gold_noise(invId, time);
+  float rand2 = gold_noise(invId + vec2(641.51224, 423.178), time);
+  float rand3 = gold_noise(invId - vec2(147.16414, 363.941), time);
   /* Set global 'rand' variable */
 
   ivec3 size = imageSize(photonMaps);
@@ -362,10 +362,10 @@ void main(void) {
   ivec3 index = ivec3(uv * size.xy, box_id * 6 + face_id);
   ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 + box_id * 6 + face_id);
 
-  float rand4 = random(point_to_scatter.xz, time);
-  float rand5 = random(point_to_scatter.xz + vec2(485.4215, 246.9275), time);
-  float rand6 = random(point_to_scatter.xz - vec2(147.16414, 363.941), time);
-  float rand7 = random(point_to_scatter.xz + vec2(132.1324, 234.58891), time);
+  float rand4 = random(invId, time);
+  float rand5 = random(invId + vec2(485.4215, 246.9275), time);
+  float rand6 = random(invId - vec2(147.16414, 363.941), time);
+  float rand7 = random(invId + vec2(132.1324, 234.58891), time);
 
   vec3 seeds = vec3(rand4, rand5, rand6);
 
@@ -379,11 +379,12 @@ void main(void) {
   vec3 lightDirection = randomRay(seeds, face_normal);
 
   float r = imageLoad(photonMaps,scatter_index).r;
-  if(r >= EPSILON)
+  
+  if(imageLoad(photonMaps,scatter_index).g < 10)  
   {
-    imageStore(photonMaps, scatter_index, vec4(min(r,r - r * rand7),  1.0, 0.0, 1.0));
+    imageStore(photonMaps, scatter_index, vec4(r, imageLoad(photonMaps,scatter_index).g + 1, 0.0, 1.0));
 
-    trace(point_to_scatter + EPSILON * face_normal, lightDirection, r * rand7);
+    trace(point_to_scatter + EPSILON * face_normal, lightDirection, r * dot(face_normal,lightDirection) * 0.3);
   }
  
 }

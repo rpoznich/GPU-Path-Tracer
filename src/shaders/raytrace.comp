@@ -2,8 +2,8 @@ R"zzz(#version 430 core
 #extension GL_ARB_texture_cube_map_array : require
 #define PI 3.14159265359
 
+layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
 
-uniform sampler3D photonMap3D;
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
 uniform samplerCubeArray cubeMaps;
 uniform vec3 camera_position;
@@ -20,18 +20,13 @@ struct box {
   vec3 ks_;
   bool ref;
 };
-#define MAX_SCENE_BOUNDS 100.0
+#define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
-#define EPSILON 0.0001
-float min_height = 0.0;
-float max_height = 2.0;
-float min_depth = 43;
-float max_depth = 47;
-float min_width = 43;
-float max_width = 48;
+#define EPSILON 0.000001
+
 const box boxes[] = box[21](
   /* The ground */
-  box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
+   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
@@ -52,7 +47,7 @@ const box boxes[] = box[21](
   box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   /* Box in the middle */
-  box(vec3(45, 1.0, 45), vec3(46,2.0, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
+  box(vec3(45, 1.0, 46), vec3(46, 2.0, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
 );
 
 struct isect
@@ -157,7 +152,7 @@ bool intersectBox(vec3 origin, vec3 dir, const box b, out isect i)
             i.face =  3;
             i.normal = vec3(0.0, -1.0, 0.0);
           }
-          else if (dir.y < 0.0 && abs(hit.y - b.max.y) <EPSILON){
+          else if (dir.y < 0.0 && abs(hit.y - b.max.y) < EPSILON){
              i.face =  2;
              i.normal = vec3(0.0, 1.0, 0.0);
           }
@@ -232,10 +227,30 @@ vec2 texCoordForFace(vec3 hit, const box b, int fIndex) {
   }
 }
 
-vec3 get3DTexCoord(vec3 hit)
-{
-  return (hit - vec3(min_width, min_height, min_depth)) / (vec3(max_width, max_height, max_depth) - vec3(min_width, min_height, min_depth)); 
+vec2 getUV(vec3 hit, const box b, int fIndex) {
+  if (fIndex == 0) {
+    vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
+    return vec2(1.0 - res.x, 1.0 - res.y);
+  } else if (fIndex == 1) {
+    vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
+    return vec2(res.x, 1.0 - res.y);
+    
+  } else if (fIndex == 2) {
+    vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
+    return res;
+  } else if (fIndex == 3) {
+    vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
+    return res;
+    
+  } else if (fIndex == 4) {
+    vec2 res = (hit.xy - b.min.xy) / (b.max.xy - b.min.xy);
+    return vec2(res.x, 1.0 - res.y);
+  } else {
+    vec2 res = (hit.xy - b.min.xy) / (b.max.xy - b.min.xy);
+    return vec2(1.0 - res.x, 1.0 - res.y);
+  }
 }
+
 
 vec3 trace(vec3 origin, vec3 dir) {
   bool keepGoing = true;
@@ -243,18 +258,21 @@ vec3 trace(vec3 origin, vec3 dir) {
   int depth = 10;
   float attenuate_factor = 1;
   bool lastState = false;
+
   while(depth > 0)
   {
     isect i;
     if (intersectBoxes(origin, dir, i)) {
       vec3 hitPoint = origin + dir * i.tMin;
       box b = boxes[i.bi];
+      vec2 uv = getUV(hitPoint, b, i.face);
 
       vec3 unitPoint = (hitPoint - b.min) / (b.max - b.min) - vec3(0.5,0.5,0.5);
       float distance_attenuation = 1.0 / max(1.0,distance(origin,hitPoint));
+      ivec3 index = ivec3(uv * imageSize(photonMaps).xy, i.bi * 6 + i.face);
 
-      //float r = dot(i.normal,-dir) *  texture(cubeMaps, vec4(unitPoint, float(i.bi))).r * distance_attenuation * attenuate_factor;
-      float r = texture(photonMap3D, get3DTexCoord(hitPoint)).r * dot(i.normal,-dir) *  distance_attenuation * attenuate_factor;
+      float r = dot(i.normal,-dir) *  texture(cubeMaps, vec4(unitPoint, float(i.bi))).r * distance_attenuation * attenuate_factor;
+      //float r = dot(i.normal, -dir) * imageLoad(photonMaps,index).r * distance_attenuation * attenuate_factor;
       if(!i.ref)
       {
         color += vec3(r,r,r);
