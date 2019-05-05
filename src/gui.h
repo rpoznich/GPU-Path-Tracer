@@ -109,7 +109,7 @@ private:
 	float zoom_speed_ = 0.1f;
 	float aspect_;
 
-	glm::vec3 look_ = glm::normalize(glm::vec3(0.0f, -1.0/sqrt(2), -1.0/sqrt(2)));
+	glm::vec3 look_ = glm::normalize(glm::vec3(0.0f, 1.0/sqrt(2), 1.0/sqrt(2)));
 	glm::vec3 up_ = glm::vec3(0.0f, 1.0/sqrt(2), -1.0/sqrt(2));
 	glm::vec3 eye_ = glm::vec3(43.0f, camera_distance_, 43.0f);
 	glm::vec3 proj_pos_ = glm::vec3(eye_);
