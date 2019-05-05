@@ -2,7 +2,7 @@ R"zzz(#version 430 core
 #extension GL_ARB_texture_cube_map_array : require
 #define PI 3.14159265359
 
-layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
+layout(binding = 1, rgba16f) uniform imageCubeArray photonMaps;
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
 uniform samplerCubeArray cubeMaps;
@@ -23,7 +23,12 @@ struct box {
 #define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
 #define EPSILON 0.000001
-
+float min_height = 0.0;
+float max_height = 2.0;
+float min_depth = 43;
+float max_depth = 47;
+float min_width = 43;
+float max_width = 48;
 const box boxes[] = box[21](
   /* The ground */
    box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
@@ -276,14 +281,15 @@ vec3 trace(vec3 origin, vec3 dir) {
       if(!i.ref)
       {
         color += vec3(r,r,r);
-        attenuate_factor = 0.1;
         float rand1 = random(hitPoint.xz, time + depth);
         float rand2 = random(hitPoint.xz + vec2(641.51224, 423.178), time + depth);
         float rand3 = random(hitPoint.xz - vec2(147.16414, 363.941), time + depth);
+        vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
+                min_depth + rand3 * (max_depth- min_depth)) - vec3(origin));
         /* Set global 'rand' variable */
         vec3 seeds = vec3(rand1, rand2, rand3);
         origin += i.tMin * dir + EPSILON * i.normal;
-        dir = randomRay(seeds, i.normal);
+        dir = lightDirection *  dot(i.normal, lightDirection);
         break;
       } else 
       {

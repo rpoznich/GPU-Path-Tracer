@@ -24,6 +24,13 @@ struct box {
 #define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
 #define EPSILON 0.000001
+
+float min_height = 0.0;
+float max_height = 2.0;
+float min_depth = 43;
+float max_depth = 47;
+float min_width = 43;
+float max_width = 48;
 const box boxes[] = box[21](
   /* The ground */
    box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
@@ -268,7 +275,7 @@ void trace(vec3 origin, vec3 dir, float atten) {
   		vec2 oldColor = imageLoad(photonMaps, index).rg;
   		float numPhotons = oldColor.g;
   		float blended = oldColor.r;
-  		blended += color;
+  		blended += 1.0;
   		imageStore(photonMaps, index, vec4(max(0,blended), numPhotons, 0.0, 1.0));
       imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
   		if(i.ref){
@@ -376,8 +383,10 @@ void main(void) {
   /* Sample random sphere point */
   vec3 randSphere = randomSpherePoint(seeds);
   vec3 positionOnLight = vec3(point_to_scatter) + randSphere * lightRadius;
-  vec3 lightDirection = randomRay(seeds, face_normal);
-
+  //vec3 lightDirection = randomRay(seeds, face_normal);
+  vec3 lightDirection = normalize(vec3(min_width + rand4 * (max_width- min_width), min_height + rand5 * (max_height- min_height),
+                min_depth + rand6 * (max_depth- min_depth)) - vec3(point_to_scatter));
+  lightDirection *= dot(face_normal, lightDirection);
   float r = imageLoad(photonMaps,scatter_index).r;
   
   if(imageLoad(photonMaps,scatter_index).g < 10)  

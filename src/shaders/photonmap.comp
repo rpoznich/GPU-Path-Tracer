@@ -1,6 +1,6 @@
 R"zzz(#version 430 core
 
-layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
+layout(binding = 1, rgba16f) uniform imageCubeArray photonMaps;
 
 uniform vec4 light_position;
 
@@ -163,7 +163,7 @@ bool intersectBox(vec3 origin, vec3 dir, const box b, out isect i)
             i.face =  3;
             i.normal = vec3(0.0, -1.0, 0.0);
           }
-          else if (dir.y < 0.0 && abs(hit.y - b.max.y) <EPSILON){
+          else if (dir.y < 0.0 && abs(hit.y - b.max.y) < EPSILON){
              i.face =  2;
              i.normal = vec3(0.0, 1.0, 0.0);
           }
@@ -246,6 +246,7 @@ void trace(vec3 origin, vec3 dir) {
   bool keepGoing = true;
   int depth = 10;
   float attenuate_factor = 1.0;
+  float photons = 0;
   ivec3 size = imageSize(photonMaps);
   while(depth > 0)
   {
@@ -259,24 +260,31 @@ void trace(vec3 origin, vec3 dir) {
   		vec2 uv = getUV(hitPoint, b, fIndex);
   		ivec3 index = ivec3(uv * size.xy, i.bi * 6 + fIndex);
       ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 + i.bi * 6 + fIndex);
-  		float color = attenuate_factor * 12;
+  		float color = attenuate_factor* 12;
   		vec2 oldColor = imageLoad(photonMaps, index).rg;
   		float numPhotons = oldColor.g;
   		float blended = oldColor.r;
-      if(numPhotons <= 0)
+      if(numPhotons == 0)
       {
-       blended += color;
-    	 imageStore(photonMaps, index, vec4(blended, 1.0, 0.0, 1.0));
-       imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
+        blended += color;
+      	imageStore(photonMaps, index, vec4(blended, 1.0, 0.0, 1.0));
+        imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
       }
-
   		if(i.ref){
           attenuate_factor *= 0.5;
           origin += (i.tMin-0.0001) * dir;
           dir = reflect(dir, i.normal);
           break;
   		} else {
-  			break;
+        //attenuate_factor *= 0.1;
+        float rand1 = random(hitPoint.xz, time + depth);
+        float rand2 = random(hitPoint.xz + vec2(641.51224, 423.178), time + depth);
+        float rand3 = random(hitPoint.xz - vec2(147.16414, 363.941), time + depth);
+        /* Set global 'rand' variable */
+        vec3 seeds = vec3(rand1, rand2, rand3);
+        origin = hitPoint + EPSILON * i.normal;
+        dir = randomRay(seeds, i.normal);
+        break;
   		}
   		depth--;
       } else 
@@ -295,17 +303,36 @@ void main(void) {
   /* Set global 'rand' variable */
   vec3 seeds = vec3(rand1, rand2, rand3);
 
-  int ray = time % NUM_RAYS;
-  float _rand1 = random(invId, ray);
-  float _rand2 = random(invId + vec2(641.51224, 423.178), ray);
-  float _rand3 = random(invId - vec2(147.16414, 363.941), ray);
-  vec3 _seeds = vec3(_rand1, _rand2, _rand3);
+  // ivec3 size = imageSize(photonMaps);
+  // int box_id = int(rand3 * float(NUM_BOXES * 6)) / 6;
+  // const box targetBox = boxes[box_id];
+  // int face_id =  int(rand3 * float(NUM_BOXES * 6)) % 6;
+  // vec3 point_to_scatter = vec3(0,0,0);
+  // float y_length = targetBox.max.y - targetBox.min.y;
+  // float z_length = targetBox.max.z - targetBox.min.z;
+  // float x_length = targetBox.max.x - targetBox.min.x;
+  // if(face_id == 0) // positive x
+  //   point_to_scatter = vec3(targetBox.max.x, targetBox.min.y + rand1 * y_length, targetBox.max.z - rand2 * z_length);
+  // else if (face_id == 1)
+  //   point_to_scatter = vec3(targetBox.min.x, targetBox.min.y + rand1 * y_length, targetBox.min.z + rand2 * z_length);
+  // else if (face_id == 2) //pos y
+  //   point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.max.y, targetBox.min.z + rand2 * z_length);
+  // else if (face_id == 3) //neg y
+  //   point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.min.y, targetBox.min.z + rand2 * z_length);
+  // else if (face_id == 4) //pos z
+  //   point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.max.z);
+  // else
+  //   point_to_scatter = vec3(targetBox.max.x - rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.min.z);
 
-  /* Sample random sphere point */
-  vec3 randSphere = randomSpherePoint(seeds);
-  vec3 positionOnLight = vec3(light_position) + randSphere * lightRadius;
-  vec3 lightDirection = normalize(randomRay(seeds, randSphere))	;
-  trace(vec3(positionOnLight), lightDirection);
+  vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
+                min_depth + rand3 * (max_depth- min_depth)) - vec3(light_position));
+
+  //ivec3 index = ivec3(uv * size.xy, box_id * 6 + face_id);
+  // float rand4 = random(vec2(rand1, rand2), time);
+  // float rand5 = random(vec2(rand1, rand2) + vec2(641.51224, 423.178), time);
+  // float rand6 = random(vec2(rand1, rand2)- vec2(147.16414, 363.941), time);
+  // vec3 lightDirection = randomRay(vec3(rand4,rand5,rand6), normalize(point_to_scatter - vec3(light_position)));
+  trace(vec3(light_position), lightDirection);
  
 }
 )zzz"

@@ -24,7 +24,7 @@
 
 
 #define NUM_BOXES  21
-#define PHOTON_MAP_PRECISION 100
+#define PHOTON_MAP_PRECISION 200
 int window_width = 1280, window_height = 720;
 int view_width = 1280, view_height = 720;
 const std::string window_title = "Minecraft 2.0";
@@ -205,7 +205,7 @@ GLuint createPhotonMapTexture() {
 		glGenTextures(1, &photonMapTexture);
   
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, photonMapTexture);
-        glTexStorage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 1, GL_RGBA32F, PHOTON_MAP_PRECISION, PHOTON_MAP_PRECISION, 6 * NUM_BOXES * 2);
+        glTexStorage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 1, GL_RGBA16F, PHOTON_MAP_PRECISION, PHOTON_MAP_PRECISION, 6 * NUM_BOXES * 2);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
 
         GLuint texBuffer;
@@ -213,7 +213,7 @@ GLuint createPhotonMapTexture() {
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, texBuffer);
         int size = 2 * 2 * PHOTON_MAP_PRECISION * PHOTON_MAP_PRECISION * 6 * NUM_BOXES * 2;
         glBufferData(GL_PIXEL_UNPACK_BUFFER, size, NULL, GL_STATIC_DRAW);
-        glClearBufferSubData(GL_PIXEL_UNPACK_BUFFER, GL_RGBA32F, 0, size, GL_RGBA, GL_HALF_FLOAT, NULL);
+        glClearBufferSubData(GL_PIXEL_UNPACK_BUFFER, GL_RGBA16F, 0, size, GL_RGBA, GL_HALF_FLOAT, NULL);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, photonMapTexture);
         glTexSubImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, 0, 0, 0, PHOTON_MAP_PRECISION, PHOTON_MAP_PRECISION, 6 * NUM_BOXES * 2,
                 GL_RG, GL_HALF_FLOAT, 0L);
@@ -410,7 +410,7 @@ int main(int argc, char* argv[])
 			);
 
 	raytracer_pass.getUniformLocation("cubeMaps");
-	GLuint raytracerTexture = createNew2DTexture(GL_RGBA32F, GL_RGBA, view_width, view_height);
+	GLuint raytracerTexture = createNew2DTexture(GL_RGBA16F, GL_RGBA, view_width, view_height);
 	GLint frameBufferBinding = raytracer_pass.getUniform(raytracer_pass.getUniformLocation("framebuffer"));
 	GLint photonMapsBinding_rt = raytracer_pass.getUniform(raytracer_pass.getUniformLocation("photonMaps"));
 
@@ -527,33 +527,32 @@ int main(int argc, char* argv[])
 		
 
 		photon_pass.setup();
-		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA32F));
+		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
         CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glBindImageTexture(photonMapsBinding, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(photonMapsBinding, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
 
 
 
         photon_scatter_pass.setup();
-		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA32F));
+		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
 
         CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
 
 
         //first pass, render raytracing texture
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_rt, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA32F));
 
-        glBindImageTexture(frameBufferBinding, raytracerTexture, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        glBindImageTexture(frameBufferBinding, raytracerTexture, 0, false, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, photonMapTexture);
         glBindSampler(0, cubeSampler);
 		raytracer_pass.setup();
 		CHECK_GL_ERROR(glDispatchCompute(nextPowerOfTwo(view_width) / workGroupSize[0], nextPowerOfTwo(view_height) / workGroupSize[1], 1));
 		glBindSampler(0, 0);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
-        glBindImageTexture(0, 0, 0, false, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(0, 0, 0, false, 0, GL_READ_WRITE, GL_RGBA16F);
         
         screen_pass.setup();
 		glBindTexture(GL_TEXTURE_2D,raytracerTexture);
