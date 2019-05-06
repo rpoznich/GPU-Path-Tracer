@@ -24,7 +24,7 @@
 
 
 #define NUM_BOXES  21
-#define PHOTON_MAP_PRECISION 200
+#define PHOTON_MAP_PRECISION 1024
 int window_width = 1280, window_height = 720;
 int view_width = 1280, view_height = 720;
 const std::string window_title = "Minecraft 2.0";
@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
 
 	//terra.createWaterPlane(water_vertices, water_faces, gui);
 
-	glm::vec4 light_position = glm::vec4(38.0, 5, 45.0, 1.0f);
+	glm::vec4 light_position = glm::vec4(39, 14, 39, 1.0f);
 	float near_plane = 1.0f, far_plane = 200.0f;
 	glm::mat4 lightProjection = glm::ortho(-200.0f, 200.0f, -200.0f, 200.0f, near_plane, far_plane);
 	glm::mat4 lightView = glm::lookAt(glm::vec3(light_position), 
@@ -505,7 +505,7 @@ int main(int argc, char* argv[])
  //        glBindImageTexture(photonMapsBinding, 0, 0, true, 0, GL_READ_WRITE, GL_RG16F);
  //        --steps;
 	// }
-
+    std::vector<GLubyte> emptyData(view_width * view_width * 4, 0);
 	while (!glfwWindowShouldClose(window)) {
 		//cube_pass.updateVBO(0,cube_vertices.data(), cube_vertices.size());
 		
@@ -519,10 +519,17 @@ int main(int argc, char* argv[])
 		glDepthFunc(GL_LESS);
 		glCullFace(GL_BACK);
 		
-	
+		if(gui.isDirty())
+		{
+			glBindTexture(GL_TEXTURE_2D, raytracerTexture);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, view_width, view_height, GL_BGRA, GL_UNSIGNED_BYTE, &emptyData[0]);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+		
 		gui.updateMatrices(false);
 		mats = gui.getMatrixPointers();
-		
+
+
 		std::cout<< gui.getCamera() << std::endl;
 		
 
@@ -534,16 +541,17 @@ int main(int argc, char* argv[])
 
 
 
-        photon_scatter_pass.setup();
-		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
+  //       photon_scatter_pass.setup();
+		// CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
 
-        CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
+  //       CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
+  //       glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+  //       glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
 
 
         //first pass, render raytracing texture
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_rt, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
 
         glBindImageTexture(frameBufferBinding, raytracerTexture, 0, false, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, photonMapTexture);
@@ -551,6 +559,8 @@ int main(int argc, char* argv[])
 		raytracer_pass.setup();
 		CHECK_GL_ERROR(glDispatchCompute(nextPowerOfTwo(view_width) / workGroupSize[0], nextPowerOfTwo(view_height) / workGroupSize[1], 1));
 		glBindSampler(0, 0);
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
         glBindImageTexture(0, 0, 0, false, 0, GL_READ_WRITE, GL_RGBA16F);
         
@@ -559,6 +569,7 @@ int main(int argc, char* argv[])
 		CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES,
                               quad_indices.size() * 3,
                               GL_UNSIGNED_INT, 0));
+		glBindTexture(GL_TEXTURE_2D,0);
 
 // 		if(terra.updateCube(gui.getCamera()[0], gui.getCamera()[2]) || need_update)
 // 		{

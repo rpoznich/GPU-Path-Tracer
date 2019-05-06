@@ -1,10 +1,11 @@
 R"zzz(#version 430 core
 #extension GL_ARB_texture_cube_map_array : require
 #define PI 3.14159265359
+#define _2PI  6.28318530717958647692
 
 layout(binding = 1, rgba16f) uniform imageCubeArray photonMaps;
 
-layout(binding = 0, rgba32f) uniform image2D framebuffer;
+layout(binding = 0, rgba16f) uniform image2D framebuffer;
 uniform samplerCubeArray cubeMaps;
 uniform vec3 camera_position;
 uniform vec3 ray00;
@@ -30,29 +31,29 @@ float max_depth = 47;
 float min_width = 43;
 float max_width = 48;
 const box boxes[] = box[21](
-  /* The ground */
-   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 43), vec3(48, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   /* Box in the middle */
-  box(vec3(45, 1.0, 46), vec3(46, 2.0, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
+  /* The ground */
+   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 43), vec3(48, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.5,0.5,0.5), false),
+  box(vec3(45.5, 1.0, 45.5), vec3(46.5, 2.0, 46.5), vec3(0.46,0.47,0.09), vec3(0.5,0.5,0.5), false)
 );
 
 struct isect
@@ -107,6 +108,38 @@ float random(vec2 pos, float time) {
   uvec3 u = floatBitsToUint(vec3(pos, time));
   uint h = hash3(u.x, u.y, u.z);
   return uintBitsToFloat((h & mantissaMask) | one) - 1.0;
+}
+
+vec3 randInUnitSphere(vec2 co, float time)
+{
+  float angTheta = _2PI*random(co, time);
+  float angPhi = _2PI*random(12.3456*co, time);
+  float rad = random(45.6789*co, time);
+
+  return vec3(rad*sin(angTheta)*cos(angPhi), rad*sin(angTheta)*sin(angPhi), rad*cos(angTheta));
+}
+
+vec3 randomCosineWeightedHemispherePoint(vec3 rand, vec3 n) {
+  float r = rand.x * 0.5 + 0.5; // [-1..1) -> [0..1)
+  float angle = (rand.y + 1.0) * PI; // [-1..1] -> [0..2*PI)
+  float sr = sqrt(r);
+  vec2 p = vec2(sr * cos(angle), sr * sin(angle));
+  /*
+   * Unproject disk point up onto hemisphere:
+   * 1.0 == sqrt(x*x + y*y + z*z) -> z = sqrt(1.0 - x*x - y*y)
+   */
+  vec3 ph = vec3(p.xy, sqrt(1.0 - p*p));
+  /*
+   * Compute some arbitrary tangent space for orienting
+   * our hemisphere 'ph' around the normal. We use the camera's up vector
+   * to have some fix reference vector over the whole screen.
+   */
+  vec3 tangent = normalize(rand);
+  vec3 bitangent = cross(tangent, n);
+  tangent = cross(bitangent, n);
+  
+  /* Make our hemisphere orient around the normal. */
+  return tangent * ph.x + bitangent * ph.y + n * ph.z;
 }
 
 vec3 randomSpherePoint(vec3 seeds) {
@@ -182,16 +215,6 @@ bool intersectBox(vec3 origin, vec3 dir, const box b, out isect i)
 
 
 
-vec2 intersectBox(vec3 origin, vec3 dir, const box b) {
-  vec3 tMin = (b.min - origin) / dir;
-  vec3 tMax = (b.max - origin) / dir;
-  vec3 t1 = min(tMin, tMax);
-  vec3 t2 = max(tMin, tMax);
-  float tNear = max(max(t1.x, t1.y), t1.z);
-  float tFar = min(min(t2.x, t2.y), t2.z);
-  return vec2(tNear, tFar);
-}
-
 bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
   float smallest = MAX_SCENE_BOUNDS;
   bool found = false;
@@ -199,7 +222,7 @@ bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
     isect temp;
     if (intersectBox(origin, dir, boxes[i], temp) && temp.tMin < smallest) {
       intersection = temp;
-      smallest = intersection.tMin;
+      smallest = temp.tMin;
       found = true;
       intersection.ref = boxes[i].ref;
       intersection.bi = i;
@@ -207,6 +230,8 @@ bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
   }
   return found;
 }
+
+
 
 vec2 texCoordForFace(vec3 hit, const box b, int fIndex) {
   if (fIndex == 0) {
@@ -257,13 +282,13 @@ vec2 getUV(vec3 hit, const box b, int fIndex) {
 }
 
 
-vec3 trace(vec3 origin, vec3 dir) {
+vec3 trace(vec3 origin, vec3 dir, ivec2 pix) {
   bool keepGoing = true;
   vec3 color = vec3(0.0, 0.0, 0.0);
   int depth = 10;
   float attenuate_factor = 1;
   bool lastState = false;
-
+  int firstImpact = -1;
   while(depth > 0)
   {
     isect i;
@@ -273,36 +298,48 @@ vec3 trace(vec3 origin, vec3 dir) {
       vec2 uv = getUV(hitPoint, b, i.face);
 
       vec3 unitPoint = (hitPoint - b.min) / (b.max - b.min) - vec3(0.5,0.5,0.5);
-      float distance_attenuation = 1.0 / max(1.0,distance(origin,hitPoint));
-      ivec3 index = ivec3(uv * imageSize(photonMaps).xy, i.bi * 6 + i.face);
+      float distance_attenuation = 1.0 / max(1.0,0.25 + 0.003 * distance(origin,hitPoint));
+      ivec3 index = ivec3(uv * imageSize(photonMaps).xy, NUM_BOXES * 6 +  i.bi * 6 + i.face);
+      vec3 r = vec3(0,0,0);
+      if(depth != 10)
+        r = dot(i.normal, -dir) * (texture(cubeMaps, vec4(unitPoint, float(i.bi))).rgb + vec3(0.01,0.01,0.01)) * b.kd_ * distance_attenuation * attenuate_factor;
+      else{
+        firstImpact = i.bi;
+        r = dot(i.normal, -dir) * (texture(cubeMaps, vec4(unitPoint, float(i.bi))).rgb + vec3(0.01,0.01,0.01)) * distance_attenuation * attenuate_factor;
+      }
+        
 
-      float r = dot(i.normal,-dir) *  texture(cubeMaps, vec4(unitPoint, float(i.bi))).r * distance_attenuation * attenuate_factor;
-      //float r = dot(i.normal, -dir) * imageLoad(photonMaps,index).r * distance_attenuation * attenuate_factor;
       if(!i.ref)
       {
-        color += vec3(r,r,r);
-        float rand1 = random(hitPoint.xz, time + depth);
-        float rand2 = random(hitPoint.xz + vec2(641.51224, 423.178), time + depth);
-        float rand3 = random(hitPoint.xz - vec2(147.16414, 363.941), time + depth);
-        vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
-                min_depth + rand3 * (max_depth- min_depth)) - vec3(origin));
+        if(imageLoad(framebuffer,pix).r == 0 || depth != 10)
+          color += r;
+        float rand1 = random(uv, time + depth);
+        float rand2 = random(uv + vec2(641.51224, 423.178), time + depth);
+        float rand3 = random(uv - vec2(147.16414, 363.941), time + depth);
+        //vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
+                                        //min_depth + rand3 * (max_depth- min_depth)) - vec3(origin));
         /* Set global 'rand' variable */
         vec3 seeds = vec3(rand1, rand2, rand3);
-        origin += i.tMin * dir + EPSILON * i.normal;
-        dir = lightDirection *  dot(i.normal, lightDirection);
+        origin = hitPoint + EPSILON * i.normal;
+        dir = normalize(randInUnitSphere(uv, time));
+        dir *= dot(i.normal, dir);
+        attenuate_factor *= 0.1;
         break;
       } else 
       {
-        color += vec3(r,r,r);
+        color += r;
         attenuate_factor = 1;
         origin += i.tMin * dir + EPSILON * i.normal;
         dir = reflect(dir, i.normal);
+        break;
       }
       lastState = i.ref;
       depth--;
     } else 
       break;
   }
+  if(firstImpact != -1)
+    color *= boxes[firstImpact].kd_;
   return color;
 }
 
@@ -314,10 +351,14 @@ void main(void) {
   if (pix.x >= size.x || pix.y >= size.y) {
     return;
   }
-  vec3 oldColor = imageLoad(framebuffer,pix).rgb;
+
+  vec4 oldColor = imageLoad(framebuffer,pix).rgba;
   vec2 pos = vec2(pix) / vec2(size.x - 1, size.y - 1);
-  vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);
-  vec3 color = trace(camera_position, dir);
-  imageStore(framebuffer, pix, vec4(color,1.0));
+  vec3 dir = normalize(mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x));
+  if(oldColor.a < 1000)
+  {
+    vec3 color = trace(camera_position, dir, pix);
+    imageStore(framebuffer, pix, vec4(oldColor.rgb + color,oldColor.a + 1));
+  }
 }
 )zzz"

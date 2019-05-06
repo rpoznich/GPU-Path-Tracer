@@ -1,7 +1,7 @@
 R"zzz(#version 430 core
 
 
-layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
+layout(binding = 1, rgba16f) uniform imageCubeArray photonMaps;
 
 uniform vec4 light_position;
 
@@ -32,30 +32,31 @@ float max_depth = 47;
 float min_width = 43;
 float max_width = 48;
 const box boxes[] = box[21](
-  /* The ground */
-   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 43), vec3(48, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   /* Box in the middle */
-  box(vec3(45, 1.0, 46), vec3(46, 2.0, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
+  /* The ground */
+   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 43), vec3(48, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.5,0.5,0.5), false),
+  box(vec3(45.5, 1.0, 45.5), vec3(46.5, 2.0, 46.5), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
 );
+
 
 struct isect
 {
@@ -392,7 +393,6 @@ void main(void) {
   if(imageLoad(photonMaps,scatter_index).g < 10)  
   {
     imageStore(photonMaps, scatter_index, vec4(r, imageLoad(photonMaps,scatter_index).g + 1, 0.0, 1.0));
-
     trace(point_to_scatter + EPSILON * face_normal, lightDirection, r * dot(face_normal,lightDirection) * 0.3);
   }
  

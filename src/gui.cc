@@ -119,7 +119,7 @@ void GUI::mousePosCallback(double mouse_x, double mouse_y)
 		look_ = glm::normalize(glm::cross(up_,tangent_));
 		is_dirty = true;
 	}
-
+	is_dirty = true;
 	// FIXME: highlight bones that have been moused over
 }
 
