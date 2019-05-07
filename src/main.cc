@@ -24,7 +24,7 @@
 
 
 #define NUM_BOXES  21
-#define PHOTON_MAP_PRECISION 1024
+#define PHOTON_MAP_PRECISION 200
 int window_width = 1280, window_height = 720;
 int view_width = 1280, view_height = 720;
 const std::string window_title = "Minecraft 2.0";
@@ -64,6 +64,10 @@ const char* quad_fs =
 
 const char* raytrace_cs =
 #include "shaders/raytrace.comp"
+;
+
+const char* photon_merge_cs =
+#include "shaders/photonmerge.comp"
 ;
 
 
@@ -446,6 +450,17 @@ int main(int argc, char* argv[])
 			{  }
 			);
 	GLint photonMapsBinding_scatter = photon_scatter_pass.getUniform(photon_scatter_pass.getUniformLocation("photonMaps"));
+
+
+	// //photon merge render pass
+	// RenderDataInput photon_merge_pass_input;
+	// RenderPass photon_merge_pass(-1,
+	// 		photon_merge_pass_input,
+	// 		{ NULL, NULL, NULL, photon_merge_cs},
+	// 		{ },
+	// 		{  }
+	// 		);
+	// GLint photonMapsBinding_merge = photon_merge_pass.getUniform(photon_merge_pass.getUniformLocation("photonMaps"));
 	//Photonmap for the cubes
 	GLuint photonMapTexture = createPhotonMapTexture();
 
@@ -506,6 +521,7 @@ int main(int argc, char* argv[])
  //        --steps;
 	// }
     std::vector<GLubyte> emptyData(view_width * view_width * 4, 0);
+    int i = 0;
 	while (!glfwWindowShouldClose(window)) {
 		//cube_pass.updateVBO(0,cube_vertices.data(), cube_vertices.size());
 		
@@ -519,12 +535,12 @@ int main(int argc, char* argv[])
 		glDepthFunc(GL_LESS);
 		glCullFace(GL_BACK);
 		
-		if(gui.isDirty())
-		{
-			glBindTexture(GL_TEXTURE_2D, raytracerTexture);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, view_width, view_height, GL_BGRA, GL_UNSIGNED_BYTE, &emptyData[0]);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
+		// if(gui.isDirty())
+		// {
+		// 	glBindTexture(GL_TEXTURE_2D, raytracerTexture);
+		// 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, view_width, view_height, GL_BGRA, GL_UNSIGNED_BYTE, &emptyData[0]);
+		// 	glBindTexture(GL_TEXTURE_2D, 0);
+		// }
 		
 		gui.updateMatrices(false);
 		mats = gui.getMatrixPointers();
@@ -533,6 +549,7 @@ int main(int argc, char* argv[])
 		std::cout<< gui.getCamera() << std::endl;
 		
 
+		
 		photon_pass.setup();
 		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
         CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
@@ -541,12 +558,13 @@ int main(int argc, char* argv[])
 
 
 
-  //       photon_scatter_pass.setup();
-		// CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
+        photon_scatter_pass.setup();
+		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
 
-  //       CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
-  //       glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-  //       glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
+        CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
+
 
 
         //first pass, render raytracing texture

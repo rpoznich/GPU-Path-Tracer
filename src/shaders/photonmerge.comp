@@ -1,0 +1,30 @@
+R"zzz(#version 430 core
+#define NUM_BOXES 21
+layout(binding = 1, rgba16f) uniform imageCubeArray photonMaps;
+
+
+
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 6) in;
+void main(void) {
+	uvec3 size = imageSize(photonMaps);
+	int width = size.x;
+	int height = size.y;
+	for(int i = 0; i < NUM_BOXES; ++i)
+	{
+		for(int face = 0; face < 6; ++face)
+		{
+			for(int x = 0; x < width; ++x)
+			{
+				for(int y = 0; y < height; ++y)
+				{
+					vec4 currentColor = imageLoad(photonMaps, ivec3(vec2(x,y), i * 6 + face));
+					vec4 scatterColor = imageLoad(photonMaps, ivec3(vec2(x,y), NUM_BOXES * 6 + i * 6 + face));
+					imageStore(photonMaps, ivec3(vec2(x,y), i * 6 + face), vec4(vec3(currentColor) + vec3(scatterColor), currentColor.a));
+					imageStore(photonMaps, ivec3(vec2(x,y), NUM_BOXES * 6 + i * 6 + face), vec4(vec3(0,0,0), scatterColor.a));
+				}
+			}
+		}
+	}
+}
+)zzz"
