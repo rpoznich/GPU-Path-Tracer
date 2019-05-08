@@ -25,11 +25,7 @@ struct box {
 
 #define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
-<<<<<<< HEAD
 #define EPSILON 0.0001
-=======
-#define EPSILON 0.000001
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
 
 float min_height = 0.0;
 float max_height = 2.0;
@@ -426,7 +422,6 @@ void main(void) {
   float rand6 = random(uv - vec2(147.16414, 363.941), time);
 
   vec3 face_normal = getFaceNormal(face_id);
-<<<<<<< HEAD
   vec3 ray = normalize(randInUnitSphere(vec2(rand4,rand5), time));
   ray *= dot(face_normal, ray);
   vec3 photons = imageLoad(photonMaps, index).rgb;
@@ -436,21 +431,9 @@ void main(void) {
   vec3 origin = point_to_scatter + EPSILON * face_normal;
   int depth = 0;
   float prev_photons = oldPhotons.a;
-  while(depth < 10 )
-=======
 
-
-  /* Sample random sphere point */
-  vec3 randSphere = randomSpherePoint(seeds);
-  vec3 positionOnLight = vec3(point_to_scatter) + randSphere * lightRadius;
-  //vec3 lightDirection = randomRay(seeds, face_normal);
-  vec3 lightDirection = normalize(vec3(min_width + rand4 * (max_width- min_width), min_height + rand5 * (max_height- min_height),
-                min_depth + rand6 * (max_depth- min_depth)) - vec3(point_to_scatter));
-  lightDirection *= dot(face_normal, lightDirection);
-  float r = imageLoad(photonMaps,scatter_index).r;
   
-  if(imageLoad(photonMaps,scatter_index).g < 10)  
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
+  while(depth < 10 )
   {
     isect i;
     if(intersectBoxes(origin, ray, i))

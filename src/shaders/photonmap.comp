@@ -258,7 +258,6 @@ void trace(vec3 origin, vec3 dir) {
   int depth = 3;
   vec3 photons = vec3(1.0,1.0,1.0);
   float attenuate_factor = 1.0;
-  float photons = 0;
   ivec3 size = imageSize(photonMaps);
   while(depth > 0)
   {
@@ -272,7 +271,6 @@ void trace(vec3 origin, vec3 dir) {
   		vec2 uv = getUV(hitPoint, b, fIndex);
   		ivec3 index = ivec3(uv * size.xy, i.bi * 6 + fIndex);
       ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 + i.bi * 6 + fIndex);
-<<<<<<< HEAD
   		vec4 oldColor = imageLoad(photonMaps, index).rgba;
   		float numPhotons = oldColor.a;
       if(numPhotons == 1.0 || depth != 3)
@@ -284,17 +282,6 @@ void trace(vec3 origin, vec3 dir) {
            oldColor += vec4(photons, 1.0);
         }
       	imageStore(photonMaps, index, oldColor);
-=======
-  		float color = attenuate_factor* 12;
-  		vec2 oldColor = imageLoad(photonMaps, index).rg;
-  		float numPhotons = oldColor.g;
-  		float blended = oldColor.r;
-      if(numPhotons == 0)
-      {
-        blended += color;
-      	imageStore(photonMaps, index, vec4(blended, 1.0, 0.0, 1.0));
-        imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
       }
   		if(i.ref){
           origin = hitPoint + EPSILON * i.normal;
@@ -303,7 +290,6 @@ void trace(vec3 origin, vec3 dir) {
           break;
   		} else {
         //attenuate_factor *= 0.1;
-<<<<<<< HEAD
         float rand1 = gold_noise(uv, time);
         float rand2 = gold_noise(uv + vec2(641.51224, 423.178), time);
         float rand3 = gold_noise(uv - vec2(147.16414, 363.941), time);
@@ -311,15 +297,6 @@ void trace(vec3 origin, vec3 dir) {
         dir = randInUnitSphere(vec2(rand1,rand2), time);
         dir *= dot(i.normal, dir);
         photons *= b.kd_ * 0.1;
-=======
-        float rand1 = random(hitPoint.xz, time + depth);
-        float rand2 = random(hitPoint.xz + vec2(641.51224, 423.178), time + depth);
-        float rand3 = random(hitPoint.xz - vec2(147.16414, 363.941), time + depth);
-        /* Set global 'rand' variable */
-        vec3 seeds = vec3(rand1, rand2, rand3);
-        origin = hitPoint + EPSILON * i.normal;
-        dir = randomRay(seeds, i.normal);
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
         break;
   		}
   		depth--;
@@ -360,11 +337,8 @@ void main(void) {
   // else
   //   point_to_scatter = vec3(targetBox.max.x - rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.min.z);
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
   vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
                 min_depth + rand3 * (max_depth- min_depth)) - vec3(light_position));
 
@@ -372,11 +346,7 @@ void main(void) {
   // float rand4 = random(vec2(rand1, rand2), time);
   // float rand5 = random(vec2(rand1, rand2) + vec2(641.51224, 423.178), time);
   // float rand6 = random(vec2(rand1, rand2)- vec2(147.16414, 363.941), time);
-<<<<<<< HEAD
   //vec3 lightDirection = randomRay(vec3(rand4,rand5,rand6), normalize(point_to_scatter - vec3(light_position)));
-=======
-  // vec3 lightDirection = randomRay(vec3(rand4,rand5,rand6), normalize(point_to_scatter - vec3(light_position)));
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
   trace(vec3(light_position), lightDirection);
  
 }
