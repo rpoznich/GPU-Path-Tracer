@@ -23,9 +23,8 @@
 #include <math.h>
 
 
-#define NUM_BOXES  21
-#define PHOTON_MAP_PRECISION 200
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
+#define NUM_BOXES  100
+#define PHOTON_MAP_PRECISION 100
 int window_width = 1280, window_height = 720;
 int view_width = 1280, view_height = 720;
 const std::string window_title = "Minecraft 2.0";
@@ -550,7 +549,6 @@ int main(int argc, char* argv[])
 		std::cout<< gui.getCamera() << std::endl;
 		
 
-<<<<<<< HEAD
 		
 		if(i < 1000)
 		{
@@ -572,31 +570,12 @@ int main(int argc, char* argv[])
 	        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	        glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
 	    }
-=======
-		photon_pass.setup();
-		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
-        CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glBindImageTexture(photonMapsBinding, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
-
-
-
-        photon_scatter_pass.setup();
-		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_scatter, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
-
-        CHECK_GL_ERROR(glDispatchCompute(worksizeX / workGroupSize[0], worksizeY / workGroupSize[1], 1));
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glBindImageTexture(photonMapsBinding_scatter, 0, 0, true, 0, GL_READ_WRITE, GL_RGBA16F);
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
 
 
         ++i;
         //first pass, render raytracing texture
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-<<<<<<< HEAD
         		CHECK_GL_ERROR(glBindImageTexture(photonMapsBinding_rt, photonMapTexture, 0, true, 0, GL_READ_WRITE, GL_RGBA16F));
-=======
->>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
 
         glBindImageTexture(frameBufferBinding, raytracerTexture, 0, false, 0, GL_WRITE_ONLY, GL_RGBA16F);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, photonMapTexture);
