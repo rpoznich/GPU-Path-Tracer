@@ -1,11 +1,13 @@
 R"zzz(#version 430 core
 
 
-layout(binding = 1, rgba32f) uniform imageCubeArray photonMaps;
+layout(binding = 1, rgba16f) uniform imageCubeArray photonMaps;
 
 uniform vec4 light_position;
 
 uniform int time;
+#define _2PI  6.28318530717958647692
+
 
 #define PI 3.14159265359
 float PHI = 1.61803398874989484820459 * 00000.1; // Golden Ratio   
@@ -23,32 +25,40 @@ struct box {
 
 #define MAX_SCENE_BOUNDS 1000000.0
 #define NUM_BOXES 21
-#define EPSILON 0.000001
+#define EPSILON 0.0001
+
+float min_height = 0.0;
+float max_height = 2.0;
+float min_depth = 43;
+float max_depth = 47;
+float min_width = 43;
+float max_width = 48;
 const box boxes[] = box[21](
-  /* The ground */
-   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 43), vec3(48, 0.1, 44), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(46, 0.0, 46), vec3(47, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
-  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false),
   /* Box in the middle */
-  box(vec3(45, 1.0, 46), vec3(46, 2.0, 47), vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5), false)
+  /* The ground */
+   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.5, 43), vec3(48, 1.5, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
+  box(vec3(46, 0.5, 46), vec3(47, 1.5, 47), vec3(1.0,0.60,1.0), vec3(0.3,0.3,0.3), false),
+  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.5,0.5,0.5), false),
+  box(vec3(45.3, 1.0, 44.5), vec3(46.3, 2.0, 45.5), vec3(0.2,0.2,0.04), vec3(0.5,0.5,0.5), true)
 );
+
 
 struct isect
 {
@@ -108,8 +118,17 @@ float random(vec2 pos, float time) {
 float gold_noise(in vec2 coordinate, in float seed){
     return fract(tan(distance(coordinate*(seed+PHI), vec2(PHI, s_PI)))*SQ2);
 }
+vec3 randInUnitSphere(vec2 co, float time)
+{
+  float angTheta = _2PI*random(co, time);
+  float angPhi = _2PI*random(12.3456*co, time);
+  float rad = random(45.6789*co, time);
+
+  return vec3(rad*sin(angTheta)*cos(angPhi), rad*sin(angTheta)*sin(angPhi), rad*cos(angTheta));
+}
 
 vec3 randomSpherePoint(vec3 seeds) {
+  seeds = (seeds - vec3(0.5,0.5,0.5)) * 2;
   float ang1 = (seeds.x + 1.0) * PI; // [-1..1) -> [0..2*PI)
   float u = seeds.y; // [-1..1), cos and acos(2v-1) cancel each other out, so we arrive at [-1..1)
   float u2 = u * u;
@@ -247,7 +266,7 @@ vec3 getFaceNormal(int fIndex)
 
 void trace(vec3 origin, vec3 dir, float atten) {
   bool keepGoing = true;
-  int depth = 1;
+  int depth = 3;
   float attenuate_factor = atten;
   ivec3 size = imageSize(photonMaps);
 
@@ -268,7 +287,7 @@ void trace(vec3 origin, vec3 dir, float atten) {
   		vec2 oldColor = imageLoad(photonMaps, index).rg;
   		float numPhotons = oldColor.g;
   		float blended = oldColor.r;
-  		blended += color;
+  		blended += 1.0;
   		imageStore(photonMaps, index, vec4(max(0,blended), numPhotons, 0.0, 1.0));
       imageStore(photonMaps, scatter_index, vec4(imageLoad(photonMaps,scatter_index).r + color, imageLoad(photonMaps,scatter_index).g, 0.0, 1.0));
   		if(i.ref){
@@ -282,6 +301,8 @@ void trace(vec3 origin, vec3 dir, float atten) {
       break;
   }
 }
+
+
 
 vec3 getWorldCoord(vec2 uv, const box b, int fIndex)
 {
@@ -326,16 +347,51 @@ vec3 getWorldCoord(vec2 uv, const box b, int fIndex)
   }
 }
 
+vec3 getSeeds(vec2 co, float t)
+{
+  float rand1 = random(co, t);
+  float rand2 = random(co + vec2(641.51224, 423.178), t);
+  float rand3 = random(co - vec2(147.16414, 363.941), t);
+  return vec3(rand1,rand2,rand3);
+}
+
+vec3 getRandomPoint(vec3 seeds, ivec3 size)
+{
+  float rand1 = seeds[0];
+  float rand2 = seeds[1];
+  float rand3 = seeds[2];
+  int box_id = int(rand3 * float(NUM_BOXES * 6)) / 6;
+  const box targetBox = boxes[box_id];
+  int face_id =  int(rand3 * float(NUM_BOXES * 6)) % 6;
+  vec3 point_to_scatter = vec3(0,0,0);
+  float y_length = targetBox.max.y - targetBox.min.y;
+  float z_length = targetBox.max.z - targetBox.min.z;
+  float x_length = targetBox.max.x - targetBox.min.x;
+  if(face_id == 0) // positive x
+    point_to_scatter = vec3(targetBox.min.x, targetBox.min.y + rand1 * y_length, targetBox.max.z - rand2 * z_length);
+  else if (face_id == 1)
+    point_to_scatter = vec3(targetBox.max.x, targetBox.min.y + rand1 * y_length, targetBox.min.z + rand2 * z_length);
+  else if (face_id == 2) //pos y
+    point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.max.y, targetBox.min.z + rand2 * z_length);
+  else if (face_id == 3) //neg y
+    point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.min.y, targetBox.min.z + rand2 * z_length);
+  else if (face_id == 4) //pos z
+    point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.max.z);
+  else
+    point_to_scatter = vec3(targetBox.max.x - rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.min.z);
+  return point_to_scatter;
+}
 
 
 layout (local_size_x = 8, local_size_y = 8) in;
 void main(void) {
   vec2 invId = vec2(gl_GlobalInvocationID.xy);
-  float lightRadius = 0.2;
-  float rand1 = gold_noise(invId, time);
-  float rand2 = gold_noise(invId + vec2(641.51224, 423.178), time);
-  float rand3 = gold_noise(invId - vec2(147.16414, 363.941), time);
+
+  float rand1 = random(invId, time);
+  float rand2 = random(invId + vec2(641.51224, 423.178), time);
+  float rand3 = random(invId - vec2(147.16414, 363.941), time);
   /* Set global 'rand' variable */
+  vec3 seeds = vec3(rand1, rand2, rand3);
 
   ivec3 size = imageSize(photonMaps);
   int box_id = int(rand3 * float(NUM_BOXES * 6)) / 6;
@@ -346,9 +402,9 @@ void main(void) {
   float z_length = targetBox.max.z - targetBox.min.z;
   float x_length = targetBox.max.x - targetBox.min.x;
   if(face_id == 0) // positive x
-    point_to_scatter = vec3(targetBox.max.x, targetBox.min.y + rand1 * y_length, targetBox.min.z + rand2 * z_length);
+    point_to_scatter = vec3(targetBox.min.x, targetBox.min.y + rand1 * y_length, targetBox.max.z - rand2 * z_length);
   else if (face_id == 1)
-    point_to_scatter = vec3(targetBox.min.x, targetBox.min.y + rand1 * y_length, targetBox.min.z + rand2 * z_length);
+    point_to_scatter = vec3(targetBox.max.x, targetBox.min.y + rand1 * y_length, targetBox.min.z + rand2 * z_length);
   else if (face_id == 2) //pos y
     point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.max.y, targetBox.min.z + rand2 * z_length);
   else if (face_id == 3) //neg y
@@ -356,35 +412,67 @@ void main(void) {
   else if (face_id == 4) //pos z
     point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.max.z);
   else
-    point_to_scatter = vec3(targetBox.min.x + rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.min.z);
+    point_to_scatter = vec3(targetBox.max.x - rand1 * x_length, targetBox.min.y + rand2 * y_length, targetBox.min.z);
 
-  vec2 uv = getUV(point_to_scatter,targetBox,face_id);
+  vec2 uv = getUV(point_to_scatter, targetBox, face_id);
   ivec3 index = ivec3(uv * size.xy, box_id * 6 + face_id);
-  ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 + box_id * 6 + face_id);
-
-  float rand4 = random(invId, time);
-  float rand5 = random(invId + vec2(485.4215, 246.9275), time);
-  float rand6 = random(invId - vec2(147.16414, 363.941), time);
-  float rand7 = random(invId + vec2(132.1324, 234.58891), time);
-
-  vec3 seeds = vec3(rand4, rand5, rand6);
-
+  ivec3 scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 +  box_id * 6 + face_id);
+  float rand4 = random(uv, time);
+  float rand5 = random(uv + vec2(641.51224, 423.178), time);
+  float rand6 = random(uv - vec2(147.16414, 363.941), time);
 
   vec3 face_normal = getFaceNormal(face_id);
-
-
-  /* Sample random sphere point */
-  vec3 randSphere = randomSpherePoint(seeds);
-  vec3 positionOnLight = vec3(point_to_scatter) + randSphere * lightRadius;
-  vec3 lightDirection = randomRay(seeds, face_normal);
-
-  float r = imageLoad(photonMaps,scatter_index).r;
-  
-  if(imageLoad(photonMaps,scatter_index).g < 10)  
+  vec3 ray = normalize(randInUnitSphere(vec2(rand4,rand5), time));
+  ray *= dot(face_normal, ray);
+  vec3 photons = imageLoad(photonMaps, index).rgb;
+  vec4 oldPhotons = imageLoad(photonMaps, scatter_index);
+  photons *= targetBox.kd_;  
+  float attenuate_factor = 1.0;
+  vec3 origin = point_to_scatter + EPSILON * face_normal;
+  int depth = 0;
+  float prev_photons = oldPhotons.a;
+  while(depth < 10 )
   {
-    imageStore(photonMaps, scatter_index, vec4(r, imageLoad(photonMaps,scatter_index).g + 1, 0.0, 1.0));
+    isect i;
+    if(intersectBoxes(origin, ray, i))
+    {
+      if(depth == 10)
+      {
+        imageStore(photonMaps, scatter_index, vec4(oldPhotons.rgb, oldPhotons.a + 1));
+      }
+      vec3 hitPoint = origin + ray * i.tMin;
+      uv = getUV(hitPoint, boxes[i.bi], i.face);
+      scatter_index = ivec3(uv * size.xy, NUM_BOXES * 6 +  i.bi * 6 + i.face);
+      oldPhotons = imageLoad(photonMaps, scatter_index);
+      float distance_attenuation = min(1.0, 1.0 / i.tMin);
+      vec3 transferPhotons = photons  * distance_attenuation * dot(i.normal, -ray) * attenuate_factor;
+      vec3 newPhotons = oldPhotons.rgb +  transferPhotons; 
 
-    trace(point_to_scatter + EPSILON * face_normal, lightDirection, r * dot(face_normal,lightDirection) * 0.3);
+      imageStore(photonMaps, scatter_index, vec4(newPhotons, oldPhotons.a + 1));
+      
+      prev_photons = oldPhotons.a;
+
+      if(i.ref)
+      {
+        origin = hitPoint + EPSILON * face_normal;
+        face_normal = i.normal;
+        ray = reflect(ray, i.normal);
+        photons *= boxes[i.bi].kd_;
+      } else 
+      {
+        origin = hitPoint + EPSILON * face_normal;
+        face_normal = i.normal;
+        rand4 = random(uv, time);
+        rand5 = random(uv + vec2(641.51224, 423.178), time);
+        rand6 = random(uv - vec2(147.16414, 363.941), time);
+        ray = normalize(randInUnitSphere(vec2(rand4,rand5), time));
+        //ray *= dot(face_normal, ray);
+        photons *= boxes[i.bi].kd_;
+      }
+      depth++;
+    } else {
+      break;
+    } 
   }
  
 }
