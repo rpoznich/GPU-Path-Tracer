@@ -311,6 +311,7 @@ vec3 trace(vec3 origin, vec3 dir, ivec2 pix) {
 
       if(!i.ref)
       {
+<<<<<<< HEAD
         //if(imageLoad(framebuffer,pix).r == 0 || depth != 10)
           color += r;
         float rand1 = random(uv, time + depth);
@@ -324,6 +325,18 @@ vec3 trace(vec3 origin, vec3 dir, ivec2 pix) {
         dir = normalize(randInUnitSphere(uv, time));
         dir *= dot(i.normal, dir);
         attenuate_factor *= 0.1;
+=======
+        color += vec3(r,r,r);
+        float rand1 = random(hitPoint.xz, time + depth);
+        float rand2 = random(hitPoint.xz + vec2(641.51224, 423.178), time + depth);
+        float rand3 = random(hitPoint.xz - vec2(147.16414, 363.941), time + depth);
+        vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
+                min_depth + rand3 * (max_depth- min_depth)) - vec3(origin));
+        /* Set global 'rand' variable */
+        vec3 seeds = vec3(rand1, rand2, rand3);
+        origin += i.tMin * dir + EPSILON * i.normal;
+        dir = lightDirection *  dot(i.normal, lightDirection);
+>>>>>>> b9713a21c8baff6f8ed3a1fa4e12aa5bf1f7d9b0
         break;
       } else 
       {
