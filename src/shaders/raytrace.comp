@@ -19,42 +19,44 @@ struct box {
   vec3 max;
   vec3 kd_;
   vec3 ks_;
-  bool ref;
+  ivec3 attr;
 };
+
+struct BVHNode {
+  vec3 bmin;
+  vec3 bmax;
+  ivec3 metadata; // left right box_id
+};
+
 #define MAX_SCENE_BOUNDS 1000000.0
-#define NUM_BOXES 21
-#define EPSILON 0.000001
+#define EPSILON 0.0001
 float min_height = 0.0;
-float max_height = 2.0;
-float min_depth = 43;
-float max_depth = 47;
-float min_width = 43;
-float max_width = 48;
-const box boxes[] = box[21](
-  /* Box in the middle */
-  /* The ground */
-   box(vec3(43, 0.0, 43), vec3(44, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(44, 0.0, 43), vec3(45, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(45, 0.0, 43), vec3(46, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(46, 0.0, 43), vec3(47, 0.1, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(47, 0.5, 43), vec3(48, 1.5, 44), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(43, 0.0, 44), vec3(44, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(44, 0.0, 44), vec3(45, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(45, 0.0, 44), vec3(46, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(46, 0.0, 44), vec3(47, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(47, 0.0, 44), vec3(48, 0.1, 45), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(43, 0.0, 45), vec3(44, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(44, 0.0, 45), vec3(45, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(45, 0.0, 45), vec3(46, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(46, 0.0, 45), vec3(47, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(47, 0.0, 45), vec3(48, 0.1, 46), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(43, 0.0, 46), vec3(44, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(44, 0.0, 46), vec3(45, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(45, 0.0, 46), vec3(46, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.3,0.3,0.3), false),
-  box(vec3(46, 0.5, 46), vec3(47, 1.5, 47), vec3(1.0,0.60,1.0), vec3(0.3,0.3,0.3), false),
-  box(vec3(47, 0.0, 46), vec3(48, 0.1, 47), vec3(0.3,0.3,0.3), vec3(0.5,0.5,0.5), false),
-  box(vec3(45.3, 1.0, 44.5), vec3(46.3, 2.0, 45.5), vec3(0.2,0.2,0.04), vec3(0.5,0.5,0.5), true)
-);
+float max_height = 10.0;
+float min_depth = 0;
+float max_depth = 10;
+float min_width = 0;
+float max_width = 10;
+
+layout (std430, binding = 1) buffer Boxes
+{
+  box[] boxes;
+  //BVHNode[] nodes;
+};
+
+
+
+layout (std430, binding = 0) buffer BVHNodes
+{
+  BVHNode[] nodes;
+};
+
+
+int stack[1000];
+
+
+
+int NUM_BOXES = boxes.length();
+
 
 struct isect
 {
@@ -82,26 +84,9 @@ uint hash3(uint x, uint y, uint z) {
 }
 
 /**
- * Generate a random value in [-1..+1).
- * 
- * The distribution MUST be really uniform and exhibit NO pattern at all,
- * because it is heavily used to generate random sample directions for various
- * things, and if the random function contains the slightest pattern, it will
- * be visible in the final image.
- * 
- * In the GLSL world, the function presented in the first answer to:
- * 
- *   http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
- * 
- * is often used, but that is not a good function, as it has problems with
- * floating point precision and is very sensitive to the seed value, resulting
- * in visible patterns for small and large seeds.
- * 
- * The best implementation (requiring GLSL 330, though) that I found over
- * time is actually this:
- * 
- *   http://amindforeverprogramming.blogspot.de/2013/07/random-floats-in-glsl-330.html
- */
+* source : 
+* http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+*/
 float random(vec2 pos, float time) {
   uint mantissaMask = 0x007FFFFFu;
   uint one = 0x3F800000u;
@@ -110,110 +95,69 @@ float random(vec2 pos, float time) {
   return uintBitsToFloat((h & mantissaMask) | one) - 1.0;
 }
 
-vec3 randInUnitSphere(vec2 co, float time)
-{
-  float angTheta = _2PI*random(co, time);
-  float angPhi = _2PI*random(12.3456*co, time);
-  float rad = random(45.6789*co, time);
+vec3 randomUnitVector(vec3 seeds) {
+  seeds = (seeds - vec3(0.5,0.5,0.5)) * 2; //convert to [-1, 1]
+  float randAngle = (seeds.x + 1.0) * PI; 
 
-  return vec3(rad*sin(angTheta)*cos(angPhi), rad*sin(angTheta)*sin(angPhi), rad*cos(angTheta));
-}
-
-vec3 randomCosineWeightedHemispherePoint(vec3 rand, vec3 n) {
-  float r = rand.x * 0.5 + 0.5; // [-1..1) -> [0..1)
-  float angle = (rand.y + 1.0) * PI; // [-1..1] -> [0..2*PI)
-  float sr = sqrt(r);
-  vec2 p = vec2(sr * cos(angle), sr * sin(angle));
-  /*
-   * Unproject disk point up onto hemisphere:
-   * 1.0 == sqrt(x*x + y*y + z*z) -> z = sqrt(1.0 - x*x - y*y)
-   */
-  vec3 ph = vec3(p.xy, sqrt(1.0 - p*p));
-  /*
-   * Compute some arbitrary tangent space for orienting
-   * our hemisphere 'ph' around the normal. We use the camera's up vector
-   * to have some fix reference vector over the whole screen.
-   */
-  vec3 tangent = normalize(rand);
-  vec3 bitangent = cross(tangent, n);
-  tangent = cross(bitangent, n);
-  
-  /* Make our hemisphere orient around the normal. */
-  return tangent * ph.x + bitangent * ph.y + n * ph.z;
-}
-
-vec3 randomSpherePoint(vec3 seeds) {
-  float ang1 = (seeds.x + 1.0) * PI; // [-1..1) -> [0..2*PI)
-  float u = seeds.y; // [-1..1), cos and acos(2v-1) cancel each other out, so we arrive at [-1..1)
-  float u2 = u * u;
-  float sqrt1MinusU2 = sqrt(1.0 - u2);
-  float x = sqrt1MinusU2 * cos(ang1);
-  float y = sqrt1MinusU2 * sin(ang1);
-  float z = u;
+  float rand2 = sqrt(1.0 - seeds.y);
+  float x = rand2 * cos(randAngle);
+  float y = rand2 * sin(randAngle);
+  float z = seeds.z;
   return vec3(x, y, z);
 }
 
 vec3 randomRay(vec3 seeds, vec3 n) {
-  /**
-   * Generate random sphere point and swap vector along the normal, if it
-   * points to the wrong of the two hemispheres.
-   * This method provides a uniform distribution over the hemisphere, 
-   * provided that the sphere distribution is also uniform.
-   */
-  vec3 v = randomSpherePoint(seeds);
-  return v * sign(dot(v, n));
+  vec3 v = randomUnitVector(seeds);
+  return v * sign(dot(v, n)); //invert the ray if necessary
 }
-
 
 
 
 bool intersectBox(vec3 origin, vec3 dir, const box b, out isect i) 
 {
-        vec3 tMin = (b.min - origin) / dir;
-        vec3 tMax = (b.max - origin) / dir;
-        vec3 t1 = min(tMin, tMax);
-        vec3 t2 = max(tMin, tMax);
-        i.tMin = max(max(t1.x, t1.y), t1.z);
-        i.tMax = min(min(t2.x, t2.y), t2.z);
-        if(i.tMax >= 0.0 && i.tMin < i.tMax && i.tMin > EPSILON)
-        {
-          vec3 hit = origin + dir * i.tMin;
-          if (dir.x > 0.0 && abs(hit.x - b.min.x) < EPSILON){
-            i.face= 1;
-            i.normal = vec3(-1.0, 0.0, 0.0);
-          }
-          else if (dir.x < 0.0 && abs(hit.x - b.max.x) < EPSILON){
-            i.face =  0;
-            i.normal =vec3(1.0, 0.0, 0.0);
-          }
-          else if (dir.y > 0.0 && abs(hit.y - b.min.y) < EPSILON){
-            i.face =  3;
-            i.normal = vec3(0.0, -1.0, 0.0);
-          }
-          else if (dir.y < 0.0 && abs(hit.y - b.max.y) < EPSILON){
-             i.face =  2;
-             i.normal = vec3(0.0, 1.0, 0.0);
-          }
-          else if (dir.z > 0.0 && abs(hit.z - b.min.z) < EPSILON){
-             i.face =  5;
-             i.normal = vec3(0.0, 0.0, -1.0);
-          }
-          else if (dir.z < 0.0 && abs(hit.z - b.max.z) < EPSILON){
-             i.face =  4;
-             i.normal = vec3(0.0, 0.0, 1.0);
-          }
-          else{
-            i.face = -1;
-            return false;
-          }
-
-          return true;
-        }
-
+    vec3 vMin = (b.min - origin) / dir;
+    vec3 vMax = (b.max - origin) / dir;
+    vec3 t1 = min(vMin, vMax);
+    vec3 t2 = max(vMin, vMax);
+    i.tMin = max(max(t1.x, t1.y), t1.z);
+    i.tMax = min(min(t2.x, t2.y), t2.z);
+    if(i.tMax >= 0.0 && i.tMin < i.tMax && i.tMin > EPSILON)
+    {
+      vec3 hit = origin + dir * i.tMin;
+      if (dir.x > 0.0 && abs(hit.x - b.min.x) < EPSILON){
+        i.face= 1;
+        i.normal = vec3(-1.0, 0.0, 0.0);
+      }
+      else if (dir.x < 0.0 && abs(hit.x - b.max.x) < EPSILON){
+        i.face =  0;
+        i.normal =vec3(1.0, 0.0, 0.0);
+      }
+      else if (dir.y > 0.0 && abs(hit.y - b.min.y) < EPSILON){
+        i.face =  3;
+        i.normal = vec3(0.0, -1.0, 0.0);
+      }
+      else if (dir.y < 0.0 && abs(hit.y - b.max.y) < EPSILON){
+         i.face =  2;
+         i.normal = vec3(0.0, 1.0, 0.0);
+      }
+      else if (dir.z > 0.0 && abs(hit.z - b.min.z) < EPSILON){
+         i.face =  5;
+         i.normal = vec3(0.0, 0.0, -1.0);
+      }
+      else if (dir.z < 0.0 && abs(hit.z - b.max.z) < EPSILON){
+         i.face =  4;
+         i.normal = vec3(0.0, 0.0, 1.0);
+      }
+      else{
+        i.face = -1;
         return false;
+      }
+
+      return true;
+    }
+
+    return false;
 }
-
-
 
 bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
   float smallest = MAX_SCENE_BOUNDS;
@@ -224,7 +168,7 @@ bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
       intersection = temp;
       smallest = temp.tMin;
       found = true;
-      intersection.ref = boxes[i].ref;
+      intersection.ref = boxes[i].attr[0] == 1;
       intersection.bi = i;
     }
   }
@@ -232,23 +176,84 @@ bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
 }
 
 
+bool intersectNode(vec3 origin, vec3 dir, int node, out float tMin, out float tMax)
+{
+  vec3 vMin = (nodes[node].bmin - origin) / dir;
+  vec3 vMax = (nodes[node].bmax - origin) / dir;
+  vec3 t1 = min(vMin, vMax);
+  vec3 t2 = max(vMin, vMax);
+  tMin = max(max(t1.x, t1.y), t1.z);
+  tMax = min(min(t2.x, t2.y), t2.z);
 
-vec2 texCoordForFace(vec3 hit, const box b, int fIndex) {
-  if (fIndex == 0) {
+  return tMin < tMax && tMin > EPSILON;
+}
+
+/*Under development*/
+bool intersectBoxesBVH(vec3 origin, vec3 dir, out isect i)
+{
+  int sp = -1;
+  stack[sp + 1] = 0; // i know i'm stupid :(
+  ++sp;
+  bool found = false;
+  i.tMin = MAX_SCENE_BOUNDS;
+  while(sp >= 0) // while stack not empty
+  {
+    int node_id = stack[sp];
+    --sp;
+    if(node_id != -1)
+    {
+      float tMin;
+      float tMax;
+      const BVHNode cur = nodes[node_id];
+      if(cur.metadata[2] == -1)
+      {
+        if(intersectNode(origin, dir, node_id, tMin, tMax) && tMin < i.tMin)//terminate early
+        {
+          int left = cur.metadata[0];
+          int right = cur.metadata[1];
+          if(left != -1 || right   != -1)
+          {
+              stack[sp+1] = left;
+              stack[sp+2] = right;
+              sp+=2;
+          }
+        }
+      } else {
+        //leaf node case
+            const box b = boxes[cur.metadata[2]];
+            isect temp;
+            if(intersectBox(origin, dir, b, temp))
+            {
+              if(temp.tMin < i.tMin){
+                i = temp;
+                i.bi = cur.metadata[2];
+                i.ref = boxes[cur.metadata[2]].attr[0] == 1;
+                found = true;
+              }
+            }
+      }
+    }
+  }  
+  return found;
+}
+
+
+vec2 texCoordForFace(vec3 hit, const box b, int face_id) {
+  if (face_id == 0) {
     vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
     return vec2(1.0 - res.x, 1.0 - res.y);
-  } else if (fIndex == 1) {
+  } else if (face_id == 1) {
     vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
     return vec2(res.x, 1.0 - res.y);
     
-  } else if (fIndex == 2) {
+  } else if (face_id == 2) {
     vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
     return res;
-  } else if (fIndex == 3) {
+  } else if (face_id == 3) {
     vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
     return res;
     
-  } else if (fIndex == 4) {
+  } else if (face_id == 4) {
     vec2 res = (hit.xy - b.min.xy) / (b.max.xy - b.min.xy);
     return vec2(res.x, 1.0 - res.y);
   } else {
@@ -257,22 +262,22 @@ vec2 texCoordForFace(vec3 hit, const box b, int fIndex) {
   }
 }
 
-vec2 getUV(vec3 hit, const box b, int fIndex) {
-  if (fIndex == 0) {
+vec2 getUV(vec3 hit, const box b, int face_id) {
+  if (face_id == 0) {
     vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
     return vec2(1.0 - res.x, 1.0 - res.y);
-  } else if (fIndex == 1) {
+  } else if (face_id == 1) {
     vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
     return vec2(res.x, 1.0 - res.y);
     
-  } else if (fIndex == 2) {
+  } else if (face_id == 2) {
     vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
     return res;
-  } else if (fIndex == 3) {
+  } else if (face_id == 3) {
     vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
     return res;
     
-  } else if (fIndex == 4) {
+  } else if (face_id == 4) {
     vec2 res = (hit.xy - b.min.xy) / (b.max.xy - b.min.xy);
     return vec2(res.x, 1.0 - res.y);
   } else {
@@ -281,6 +286,40 @@ vec2 getUV(vec3 hit, const box b, int fIndex) {
   }
 }
 
+
+
+float getWorldDistance(vec2 uv1, vec2 uv2, const box b, int face_id)
+{
+  if(face_id == 0 || face_id == 1) //positive/neg x
+  {
+    return distance(uv1 * (b.max.zy - b.min.zy), uv2 * (b.max.zy - b.min.zy));
+  } else if ( face_id == 2 || face_id == 3) //positive/neg y
+  {
+    return distance(uv1 * (b.max.xz - b.min.xz), uv2 * (b.max.xz - b.min.xz)); 
+  } else  //positive//neg z
+  {
+    return distance(uv1 * (b.max.xy - b.min.xy), uv2 * (b.max.xy - b.min.xy));
+  }
+}
+vec3 getWeightedPhoton(vec3 hitPoint, int radius, float w_radius, const box b,  const isect i)
+{
+  vec2 uv = getUV(hitPoint, b, i.face);
+  uvec3 size =  imageSize(photonMaps);
+  vec2 texel = uv * size.xy;
+  vec3 color = vec3(0,0,0);
+  int count = 0;
+  for(int x = max(0,int(texel.x) - radius); x < min(size.x,int(texel.x) + radius); ++x)
+  {
+    for(int y = max(0, int(texel.y) - radius); y < min(size.y, int(texel.y) + radius); ++y)
+    {
+      vec2 neighbor_uv = vec2(x,y) / size.xy;
+      ivec3 neighbor_index = ivec3(ivec2(x,y), NUM_BOXES * 6 + i.bi*6 + i.face);
+      color += max(0,1- getWorldDistance(uv, neighbor_uv, b, i.face) / w_radius) * imageLoad(photonMaps, neighbor_index).rgb;
+
+    }
+  }
+  return color;
+}
 
 vec3 trace(vec3 origin, vec3 dir, ivec2 pix) {
   bool keepGoing = true;
@@ -302,37 +341,22 @@ vec3 trace(vec3 origin, vec3 dir, ivec2 pix) {
       ivec3 index = ivec3(uv * imageSize(photonMaps).xy, NUM_BOXES * 6 +  i.bi * 6 + i.face);
       vec3 r = vec3(0,0,0);
       if(depth != 10)
-        r =  (texture(cubeMaps, vec4(unitPoint, float(i.bi))).rgb +  texture(cubeMaps, vec4(unitPoint, float(NUM_BOXES + i.bi))).rgb ) * b.kd_ * distance_attenuation * attenuate_factor;
+        r =  (texture(cubeMaps, vec4(unitPoint, float(i.bi))).rgb +  getWeightedPhoton(hitPoint, 2, 0.005, b, i))  * distance_attenuation * attenuate_factor;
       else{
         firstImpact = i.bi;
-        r =  (texture(cubeMaps, vec4(unitPoint, float(i.bi))).rgb + texture(cubeMaps, vec4(unitPoint, float(NUM_BOXES + i.bi))).rgb) * distance_attenuation * attenuate_factor;
+        r =  (texture(cubeMaps, vec4(unitPoint, float(i.bi))).rgb + getWeightedPhoton(hitPoint, 2, 0.005, b, i)) * distance_attenuation * attenuate_factor;
       }
         
-
+      color += r; 
       if(!i.ref)
-      {
-        //if(imageLoad(framebuffer,pix).r == 0 || depth != 10)
-          color += r;
-        float rand1 = random(uv, time + depth);
-        float rand2 = random(uv + vec2(641.51224, 423.178), time + depth);
-        float rand3 = random(uv - vec2(147.16414, 363.941), time + depth);
-        //vec3 lightDirection = normalize(vec3(min_width + rand1 * (max_width- min_width), min_height + rand2 * (max_height- min_height),
-                                        //min_depth + rand3 * (max_depth- min_depth)) - vec3(origin));
-        /* Set global 'rand' variable */
-        vec3 seeds = vec3(rand1, rand2, rand3);
-        origin = hitPoint + EPSILON * i.normal;
-        dir = normalize(randInUnitSphere(uv, time));
-        dir *= dot(i.normal, dir);
-        attenuate_factor *= 0.1;
+      {       
         break;
       } else 
       {
-        color += r;
         attenuate_factor = 1;
         origin += i.tMin * dir + EPSILON * i.normal;
         dir = reflect(dir, i.normal);
       }
-      lastState = i.ref;
       depth--;
     } else 
       break;
@@ -341,6 +365,8 @@ vec3 trace(vec3 origin, vec3 dir, ivec2 pix) {
     color *= boxes[firstImpact].kd_;
   return color;
 }
+
+
 
 
 layout (local_size_x = 8, local_size_y = 8) in;
@@ -358,5 +384,4 @@ void main(void) {
   vec3 color = trace(camera_position, dir, pix);
   imageStore(framebuffer, pix, vec4(color,oldColor.a + 1));
   
-}
-)zzz"
+})zzz"

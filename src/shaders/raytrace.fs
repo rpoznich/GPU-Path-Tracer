@@ -19,9 +19,16 @@ struct box {
   vec3 ks_;
   bool ref;
 };
+
+struct box {
+  vec3 min;
+  vec3 max;
+  ivec3 metadata;
+};
 #define MAX_SCENE_BOUNDS 1000000.0
-#define NUM_BOXES 21
-#define EPSILON 0.000001
+#define NUM_BOXES 100
+#define EPSILON 0.0001
+
 
 const box boxes[] = box[21](
   /* The ground */
@@ -106,6 +113,35 @@ bool intersectBox(vec3 origin, vec3 dir, const box b, out isect i)
         return false;
 }
 
+bool intersectNode(vec3 origin, vec3 dir, int node)
+{
+  vec3 tMin = (nodes[node].bmin - origin) / dir;
+  vec3 tMax = (nodes[node].bmax - origin) / dir;
+  vec3 t1 = min(tMin, tMax);
+  vec3 t2 = max(tMin, tMax);
+  i.tMin = max(max(t1.x, t1.y), t1.z);
+  i.tMax = min(min(t2.x, t2.y), t2.z);
+  return tMin < tMax && tMin >= EPSILON;
+}
+
+bool traverseTree(vec3 origin, vec3 dir, int node, out isect i)
+{
+  int sp = -1;
+  stack[sp + 1] = 0;
+  ++sp;
+  while(sp != -1) // while stack not empty
+  {
+    int currentNode = stack[sp];
+    --sp;
+
+  }  
+}
+
+bool intersectBoxesBVH(vec3 origin, vec3 dir, out isect i)
+{
+  return traverseTree(origin, dir, 0, i);
+}
+
 
 vec2 intersectBox(vec3 origin, vec3 dir, const box b) {
   vec3 tMin = (b.min - origin) / dir;
@@ -133,22 +169,22 @@ bool intersectBoxes(vec3 origin, vec3 dir, out isect intersection) {
   return found;
 }
 
-vec2 texCoordForFace(vec3 hit, const box b, int fIndex) {
-  if (fIndex == 0) {
+vec2 texCoordForFace(vec3 hit, const box b, int face_id) {
+  if (face_id == 0) {
     vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
     return vec2(1.0 - res.x, 1.0 - res.y);
-  } else if (fIndex == 1) {
+  } else if (face_id == 1) {
     vec2 res = (hit.zy - b.min.zy) / (b.max.zy - b.min.zy);
     return vec2(res.x, 1.0 - res.y);
     
-  } else if (fIndex == 2) {
+  } else if (face_id == 2) {
     vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
     return res;
-  } else if (fIndex == 3) {
+  } else if (face_id == 3) {
     vec2 res = (hit.xz - b.min.xz) / (b.max.xz - b.min.xz);
     return res;
     
-  } else if (fIndex == 4) {
+  } else if (face_id == 4) {
     vec2 res = (hit.xy - b.min.xy) / (b.max.xy - b.min.xy);
     return vec2(res.x, 1.0 - res.y);
   } else {

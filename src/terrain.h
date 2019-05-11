@@ -33,6 +33,10 @@ class Terrain
 	std::vector<glm::vec3> gradients;
 	std::vector<glm::vec3> alpha_beta_type;
 	std::vector<int> seeds;
+	float _eye_x;
+	float _eye_z;
+	float min_height;
+	float max_height;
 	std::vector<float> random_angle; //random from 0 to 2 pi
 	std::vector<glm::vec2> random_alpha_beta; //random alpha beta
 	template<typename T>
@@ -98,9 +102,39 @@ class Terrain
 
 
 		void terrainMatrixToVector(std::vector<glm::vec4>& vertices,  std::vector<glm::uvec3>& indices, const GUI& gui,
-																								bool gen_index) const;
+																								bool gen_index, bool culling) const;
 
 		size_t get_box_indices(const glm::vec3& pos) const;
+
+		float getMinX() const
+		{
+			return BOX_SIZE * floor((_eye_x-kFloorXRender) /BOX_SIZE) - BOX_SIZE;
+
+		}
+
+		float getMinZ() const
+		{
+			return BOX_SIZE * floor((_eye_z-kFloorZRender) /BOX_SIZE) - BOX_SIZE;
+		}
+
+		float getMaxX() const
+		{
+			return  getMinX() + kFloorXRender * BOX_SIZE * (num_x + 1);
+		}
+
+		float getMaxZ() const
+		{
+			return getMinZ() + kFloorXRender * BOX_SIZE * (num_z + 1);
+		}
+
+		float getMaxY() const
+		{
+			return max_height;
+		}
+		float getMinY() const
+		{
+			return min_height;
+		}
 
 		template<typename T>
 		bool is_colliding(const T& boxes, const glm::vec3& pos, float entity_height) const;
