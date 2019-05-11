@@ -71,9 +71,6 @@ const char* photon_merge_cs =
 ;
 
 
-const char* raytracer_fs =
-#include "shaders/raytrace.fs"
-;
 const char* floor_fragment_shader =
 #include "shaders/floor.frag"
 ;

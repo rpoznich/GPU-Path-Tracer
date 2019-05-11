@@ -111,7 +111,7 @@ private:
 
 	glm::vec3 look_ = glm::normalize(glm::vec3(0.0f, 1.0/sqrt(2), 1.0/sqrt(2)));
 	glm::vec3 up_ = glm::vec3(0.0f, 1.0/sqrt(2), -1.0/sqrt(2));
-	glm::vec3 eye_ = glm::vec3(0.0f, camera_distance_, 0.0f);
+	glm::vec3 eye_ = glm::vec3(40.0f, camera_distance_, 40.0f);
 	glm::vec3 proj_pos_ = glm::vec3(eye_);
 	glm::vec3 tangent_ = glm::cross(look_, up_);
 	glm::vec3 center_ = eye_ - camera_distance_ * look_;
