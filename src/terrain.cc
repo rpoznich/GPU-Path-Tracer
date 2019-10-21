@@ -55,14 +55,8 @@ template<typename T>
 void Terrain::_CreateCube(T& vertices, float start_x, float start_y, float start_z) const
 {
 	int start_size = vertices.size();
-	vertices.push_back(glm::vec4(start_x ,  start_y, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x,  start_y + BOX_SIZE, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y + BOX_SIZE, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x,  start_y, start_z + BOX_SIZE, 1.0f));
-	vertices.push_back(glm::vec4(start_x, start_y + BOX_SIZE, start_z + BOX_SIZE, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y + BOX_SIZE, start_z + BOX_SIZE, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y, start_z + BOX_SIZE, 1.0f));
+	vertices.push_back(glm::vec4(start_x ,  start_y, start_z, 1.0f)); //bmin
+	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y + BOX_SIZE, start_z + BOX_SIZE, 1.0f)); //bmax
 
 }
 
@@ -71,35 +65,14 @@ void Terrain::CreateCube(T& vertices, T2&indices, float start_x, float start_y, 
 {
 	int start_size = vertices.size();
 	vertices.push_back(glm::vec4(start_x ,  start_y, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x,  start_y + BOX_SIZE, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y + BOX_SIZE, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y, start_z, 1.0f));
-	vertices.push_back(glm::vec4(start_x,  start_y, start_z + BOX_SIZE, 1.0f));
-	vertices.push_back(glm::vec4(start_x, start_y + BOX_SIZE, start_z + BOX_SIZE, 1.0f));
 	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y + BOX_SIZE, start_z + BOX_SIZE, 1.0f));
-	vertices.push_back(glm::vec4(start_x + BOX_SIZE, start_y, start_z + BOX_SIZE, 1.0f));
-	indices.push_back(glm::uvec3(start_size, start_size+1, start_size+2));
-	indices.push_back(glm::uvec3(start_size, start_size+2, start_size+3));
 
-	indices.push_back(glm::uvec3(start_size+6, start_size+ 5, start_size+4));
-	indices.push_back(glm::uvec3(start_size+7, start_size+6, start_size+4));
-
-	indices.push_back(glm::uvec3(start_size+3, start_size+2, start_size+6));
-	indices.push_back(glm::uvec3(start_size+3, start_size+6, start_size+7));
-
-	indices.push_back(glm::uvec3(start_size+4, start_size+5, start_size+1));
-	indices.push_back(glm::uvec3(start_size+4, start_size+1, start_size));
-
-	indices.push_back(glm::uvec3(start_size+1, start_size+5, start_size+2));
-	indices.push_back(glm::uvec3(start_size+5, start_size+6, start_size+2));
-
-	indices.push_back(glm::uvec3(start_size+4, start_size+0, start_size+3));
-	indices.push_back(glm::uvec3(start_size+4, start_size+3, start_size+7));
 }
 
 void Terrain::InitializeTerrain(float eye_x, float eye_z){
 	cube_matrix.clear();
-
+	_eye_x = eye_x;
+	_eye_z = eye_z;
 	float min_x = BOX_SIZE * floor((eye_x-kFloorXRender) /BOX_SIZE);
 	float min_z = BOX_SIZE * floor((eye_z-kFloorZRender) /BOX_SIZE);
 
@@ -108,8 +81,8 @@ void Terrain::InitializeTerrain(float eye_x, float eye_z){
 		cube_matrix.push_back(std::deque<glm::vec4>());
 		for(size_t c = 0;  c < num_x; ++c)
 		{
-			float start_x = min_x + BOX_SIZE * c;
-			float start_z = min_z  + BOX_SIZE * r;
+			float start_x = min_x + BOX_SIZE * c + 0.01 * c;
+			float start_z = min_z  + BOX_SIZE * r + 0.01 * r;
 			_CreateCube(cube_matrix[r],  start_x,  GROUND,  start_z);
 		}
 	}
@@ -120,6 +93,8 @@ void Terrain::InitializeTerrain(float eye_x, float eye_z){
 bool Terrain::updateCube(float eye_x, float eye_z)
 {
 
+	_eye_x = eye_x;
+	_eye_z = eye_z;
 	float d_x =   (eye_x - cube_matrix[0][0].x) - kFloorXRender;
 	float d_z = (eye_z - cube_matrix[0][0].z)- kFloorZRender;
 	if(abs(d_x) >= BOX_SIZE || abs(d_z) >= BOX_SIZE)
@@ -144,7 +119,7 @@ bool Terrain::updateCube(float eye_x, float eye_z)
 				for(size_t r = 0;  r < num_z; ++r)
 				{
 					size_t i = 0;
-					while(i < 8)
+					while(i < VERTICES_PER_CUBE)
 					{
 						cube_matrix[r].erase(cube_matrix[r].begin()+0);
 						++i;
@@ -152,8 +127,8 @@ bool Terrain::updateCube(float eye_x, float eye_z)
 					float incr = BOX_SIZE;
 					if(d_x < 0)
 						incr = -BOX_SIZE;
-					float start_x = cube_matrix[r][cube_matrix[r].size()-8].x;
-					float start_z = cube_matrix[r][cube_matrix[r].size()-8].z;
+					float start_x = cube_matrix[r][cube_matrix[r].size()-VERTICES_PER_CUBE].x;
+					float start_z = cube_matrix[r][cube_matrix[r].size()-VERTICES_PER_CUBE].z;
 
 					if(d_x < 0){
 						start_z = cube_matrix[r][cube_matrix[r].size()-1].z;
@@ -172,7 +147,7 @@ bool Terrain::updateCube(float eye_x, float eye_z)
 					float max_height_neighbors = -std::numeric_limits<float>::max();
 
 					int num_neighbors = 0;
-					size_t col = cube_matrix[r].size() / 8 - 1;
+					size_t col = cube_matrix[r].size() / VERTICES_PER_CUBE - 1;
 					if(r >= 1)
 					{
 						avg_height_neighbors += cube_matrix[r-1][col*VERTICES_PER_CUBE].y - (GROUND);
@@ -219,12 +194,6 @@ bool Terrain::updateCube(float eye_x, float eye_z)
 					float noise =  getNoise(patch_size,cube_matrix[r][col* VERTICES_PER_CUBE].x, GROUND, cube_matrix[r][col* VERTICES_PER_CUBE].z);
 					cube_matrix[r][col* VERTICES_PER_CUBE].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
 					cube_matrix[r][col* VERTICES_PER_CUBE + 1].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 2].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 3].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 4].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 5].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 6].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 7].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
 				}
 				++j;
 			}
@@ -311,12 +280,6 @@ bool Terrain::updateCube(float eye_x, float eye_z)
 					float noise =  getNoise(patch_size,cube_matrix[r][col* VERTICES_PER_CUBE].x, GROUND, cube_matrix[r][col* VERTICES_PER_CUBE].z);
 					cube_matrix[r][col* VERTICES_PER_CUBE].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
 					cube_matrix[r][col* VERTICES_PER_CUBE + 1].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 2].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 3].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 4].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 5].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 6].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-					cube_matrix[r][col* VERTICES_PER_CUBE + 7].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
 				}
 				--diff_boxes;
 			}
@@ -345,7 +308,7 @@ void Terrain::createWaterPlane(std::vector<glm::vec4>& water_vertices, std::vect
 			{
 				/*fixme : add depth checking stuff here */
 				bool check = false;
-				for(size_t _ = 0; _ < 8 && !check; ++_)
+				for(size_t _ = 0; _ < VERTICES_PER_CUBE && !check; ++_)
 				{
 					glm::vec3 dir = glm::normalize(glm::vec3(cube_matrix[r][c * VERTICES_PER_CUBE + _]) - gui.getCamera());
 					check = gui.inViewFrustum(dir); 
@@ -353,11 +316,11 @@ void Terrain::createWaterPlane(std::vector<glm::vec4>& water_vertices, std::vect
 				if(check)
 				{
 					auto b = cube_matrix[r].begin() + c * VERTICES_PER_CUBE;
-					auto e = b + 8;
+					auto e = b + VERTICES_PER_CUBE;
 					size_t start_size = water_vertices.size();
 					water_vertices.insert(water_vertices.end(), b, e);
 					float elev = (GROUND + BOX_SIZE * 3 - cube_matrix[r][c * VERTICES_PER_CUBE].y);
-					for(size_t _ = 0; _ < 8; ++_){
+					for(size_t _ = 0; _ < VERTICES_PER_CUBE; ++_){
 						water_vertices[water_vertices.size() - (_+1)].y += elev;
 					}
 				}
@@ -370,6 +333,7 @@ void Terrain::createWaterPlane(std::vector<glm::vec4>& water_vertices, std::vect
 
 void Terrain::displaceCube()
 {
+
 	for(size_t r = 0; r < num_z ; ++r)
 	{
 		for(size_t col = 0; col < num_x; ++col)
@@ -423,18 +387,15 @@ void Terrain::displaceCube()
 			float noise =  getNoise(patch_size, cube_matrix[r][col * VERTICES_PER_CUBE].x, GROUND, cube_matrix[r][col * VERTICES_PER_CUBE].z);
 			cube_matrix[r][col * VERTICES_PER_CUBE].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
 			cube_matrix[r][col * VERTICES_PER_CUBE + 1].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-			cube_matrix[r][col * VERTICES_PER_CUBE + 2].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-			cube_matrix[r][col * VERTICES_PER_CUBE + 3].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-			cube_matrix[r][col * VERTICES_PER_CUBE + 4].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-			cube_matrix[r][col * VERTICES_PER_CUBE + 5].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-			cube_matrix[r][col * VERTICES_PER_CUBE + 6].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
-			cube_matrix[r][col * VERTICES_PER_CUBE + 7].y += std::max(max_height_neighbors-BOX_SIZE,std::min(min_height_neighbors+BOX_SIZE,std::max(minTerrainHeight,std::min(maxTerrainHeight,avg_height_neighbors * (1 + noise)))));
+
+			min_height = std::min(min_height, cube_matrix[r][col * VERTICES_PER_CUBE].y);
+			max_height = std::max(max_height, cube_matrix[r][col * VERTICES_PER_CUBE + 1].y);
 		}
 	}
 }
 
 void Terrain::terrainMatrixToVector(std::vector<glm::vec4>& vertices,  std::vector<glm::uvec3>& indices, const GUI& gui,
-																								bool gen_index) const 
+																								bool gen_index, bool culling) const 
 {
 	assert(cube_matrix.size() == num_z && cube_matrix[0].size() == num_x * VERTICES_PER_CUBE);
 
@@ -451,8 +412,8 @@ void Terrain::terrainMatrixToVector(std::vector<glm::vec4>& vertices,  std::vect
 		for(size_t c = 0; c < num_x; ++c)
 		{
 			/*fixme : add depth checking stuff here */
-			bool check = false || gen_index;
-			for(size_t _ = 0; _ < 8 && !check; ++_) //culling
+			bool check = false || gen_index || !culling;
+			for(size_t _ = 0; _ < VERTICES_PER_CUBE && !check; ++_) //culling
 			{
 				glm::vec3 dir = glm::normalize(glm::vec3(cube_matrix[r][c * VERTICES_PER_CUBE + _]) - gui.getCamera());
 				check = gui.inViewFrustum(dir); 
@@ -460,7 +421,7 @@ void Terrain::terrainMatrixToVector(std::vector<glm::vec4>& vertices,  std::vect
 			if(check)
 			{
 				auto b = cube_matrix[r].begin() + c * VERTICES_PER_CUBE;
-				auto e = b + 8;
+				auto e = b + VERTICES_PER_CUBE;
 				size_t start_size = vertices.size();
 				vertices.insert(vertices.end(), b, e);
 				if(gen_index)
